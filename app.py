@@ -1,65 +1,56 @@
 import streamlit as st
 import random
 
+# 1. THE SOUL: Custom HTML/CSS Engine
 st.set_page_config(page_title="H-J-B-R-L PRO", layout="centered")
 
-# 1. THE SOUL: Hard-Locked Square Grid CSS
 st.markdown("""
     <style>
-    /* Force a narrow, centered game container */
-    .block-container { max-width: 550px !important; background-color: #121212; }
+    /* Force the entire app to stay compact */
+    .main { background-color: #121212; }
+    .block-container { max-width: 500px !important; padding: 1rem !important; }
 
-    /* THE BOARD: Forced Squares, No Stretches */
-    .board-wrapper {
-        display: grid;
-        grid-template-columns: repeat(11, 45px);
-        grid-auto-rows: 45px;
-        gap: 2px;
-        justify-content: center;
-        background-color: #1a1a1a;
-        padding: 10px;
-        border: 4px solid #333;
+    /* THE BOARD: Forced Square Grid */
+    .stButton > button[key^="b_"] {
+        background-color: #263238 !important;
+        border: 1px solid #37474f !important;
+        color: #546e7a !important;
+        width: 40px !important;
+        height: 40px !important;
+        min-width: 40px !important;
+        border-radius: 2px !important;
+        padding: 0px !important;
+        margin: 0px !important;
     }
 
-    /* THE RACK: Actual Wooden Texture & Connected Tiles */
-    .wooden-rack {
-        background: linear-gradient(to bottom, #8b5a2b, #5d3a1a);
-        padding: 15px 10px 5px 10px;
-        border-radius: 4px;
-        border-bottom: 8px solid #3d2611;
+    /* THE RACK: Physical Wood Style */
+    .rack-bar {
+        background: linear-gradient(to bottom, #8d6e63, #4e342e);
+        padding: 10px;
+        border-bottom: 6px solid #2d1b15;
         display: flex;
         justify-content: center;
-        gap: 2px;
-        margin-top: 30px;
-        box-shadow: 0 10px 20px rgba(0,0,0,0.5);
+        gap: 4px;
+        margin-top: 20px;
     }
 
-    /* Styled Buttons to look like Real Tiles */
-    div.stButton > button {
-        border-radius: 2px !important;
-        font-family: sans-serif !important;
-        transition: transform 0.1s;
+    /* THE TILES: Wooden blocks with Subscripts */
+    div.stButton > button[key^="h_"] {
+        background-color: #ffe082 !important;
+        color: #3e2723 !important;
+        width: 48px !important;
+        height: 55px !important;
+        font-size: 20px !important;
+        font-weight: bold !important;
+        border: 1px solid #d4a017 !important;
+        box-shadow: 0 4px 0 #b38b4d !important;
     }
     
-    /* Board Button Style */
-    div.stButton > button[key^="b_"] {
-        background-color: #2c3e50 !important;
-        color: #5d6d7e !important;
-        width: 45px !important; height: 45px !important;
-        border: 1px solid #141e26 !important;
+    /* Highlight the selected tile */
+    div.stButton > button:active, div.stButton > button:focus {
+        border: 2px solid #ffffff !important;
+        background-color: #ffd54f !important;
     }
-
-    /* Rack Button Style (The "Wood" Blocks) */
-    div.stButton > button[key^="h_"] {
-        background-color: #f3cf7a !important;
-        color: #3d2b1f !important;
-        width: 50px !important; height: 60px !important;
-        font-size: 22px !important;
-        font-weight: bold !important;
-        border: 1px solid #b38b4d !important;
-        box-shadow: inset 0 -4px 0 #b38b4d, 0 4px 6px rgba(0,0,0,0.3) !important;
-    }
-    div.stButton > button[key^="h_"]:active { transform: translateY(4px); box-shadow: none !important; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -71,34 +62,36 @@ if 'board' not in st.session_state:
     st.session_state.update({
         'board': [["" for _ in range(11)] for _ in range(11)],
         'hand': random.sample(TILES, 7),
-        'selected': None
+        'selected_idx': None
     })
 
-# 3. Game UI
-st.markdown("<h1 style='text-align: center; color: #f3cf7a;'>𝐇-𝐉-𝐁-𝐑-𝐋 𝐏𝐑𝐎</h1>", unsafe_allow_html=True)
+# 3. Game Header
+st.markdown("<h2 style='text-align:center; color:#ffe082;'>𝐇-𝐉-𝐁-𝐑-𝐋 𝐏𝐑𝐎</h2>", unsafe_allow_html=True)
 
-# The Square Board (Click a tile first, then click a spot)
-st.write(f"**Action:** {'Select a tile from your rack' if not st.session_state.selected else f'Place {st.session_state.selected[0]} on the board'}")
-
+# 4. The 11x11 Board
+# Using fixed container to stop the "Barcode" stretching
 with st.container():
     for r in range(11):
         cols = st.columns(11)
         for c in range(11):
             val = st.session_state.board[r][c]
             if cols[c].button(val if val else " ", key=f"b_{r}_{c}"):
-                if st.session_state.selected:
-                    st.session_state.board[r][c] = st.session_state.selected[0]
-                    st.session_state.hand.remove(st.session_state.selected)
-                    st.session_state.hand.append(random.choice(TILES))
-                    st.session_state.selected = None
+                if st.session_state.selected_idx is not None:
+                    # Place tile
+                    tile_data = st.session_state.hand[st.session_state.selected_idx]
+                    st.session_state.board[r][c] = tile_data[0]
+                    # Refill hand
+                    st.session_state.hand[st.session_state.selected_idx] = random.choice(TILES)
+                    st.session_state.selected_idx = None
                     st.rerun()
 
-# 4. THE RACK (The Physical Holder)
-st.markdown("<div class='wooden-rack'>", unsafe_allow_html=True)
-h_cols = st.columns([1,1,1,1,1,1,1])
+# 5. THE RACK (The Holder)
+st.write("---")
+h_cols = st.columns(7)
 for i, (char, pts) in enumerate(st.session_state.hand):
     pt_sub = "".join(SUB.get(d, d) for d in str(pts))
     if h_cols[i].button(f"{char}{pt_sub}", key=f"h_{i}"):
-        st.session_state.selected = (char, pts)
+        st.session_state.selected_idx = i
         st.rerun()
-st.markdown("</div>", unsafe_allow_html=True)
+
+st.markdown("<div style='text-align:center; color:#8d6e63;'>═══ WOODEN RACK ═══</div>", unsafe_allow_html=True)
