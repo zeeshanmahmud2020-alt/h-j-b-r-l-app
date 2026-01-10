@@ -2,57 +2,52 @@ import streamlit as st
 import requests
 import random
 
-# 1. Page Config
-st.set_page_config(page_title="H-J-B-R-L BD", layout="centered")
+# 1. Clean UI Setup
+st.set_page_config(page_title="H-J-B-R-L", layout="centered")
 
-# 2. Memory Setup
-POOL = ['ক', 'খ', 'গ', 'ঘ', 'চ', 'ছ', 'জ', 'ত', 'দ', 'ন', 'প', 'ব', 'ম', 'র', 'ল', 'স', 'হ', 
-        'অ', 'আ', 'ই', 'উ', 'এ', 'ও', 'া', 'ি', 'ী', 'ু', 'ূ', 'ে', 'ৈ', 'ো', 'ৌ']
+# Custom CSS for the "Screenshot Look"
+st.markdown("""
+    <style>
+    .stButton>button { width: 100%; height: 60px; font-size: 24px; border-radius: 10px; margin-bottom: 10px; }
+    .score-text { font-size: 30px; font-weight: bold; text-align: center; color: #f3cf7a; }
+    </style>
+    """, unsafe_allow_html=True)
 
+# 2. Memory
+POOL = ['ক', 'খ', 'গ', 'ঘ', 'চ', 'ছ', 'জ', 'ত', 'দ', 'ন', 'প', 'ব', 'ম', 'র', 'ল', 'স', 'হ', 'া', 'ি', 'ু', 'ে']
 if 's1' not in st.session_state:
     st.session_state.update({'s1':0, 's2':0, 'turn':1, 'word':"", 'letters':random.sample(POOL, 7)})
 
-# 3. Header & Scores
-st.title("𝐇-𝐉-𝐁-𝐑-𝐋 𝐁𝐃")
-st.write(f"**P1:** {st.session_state.s1} | **P2:** {st.session_state.s2} — **Player {st.session_state.turn}'s Turn**")
+# 3. Header & Score (Symmetric)
+st.markdown(f"<div class='score-text'>P1: {st.session_state.s1} | P2: {st.session_state.s2}</div>", unsafe_allow_html=True)
+st.write(f"### Player {st.session_state.turn}'s Turn")
 
-# 4. Clickable Tiles
-st.write("### Your Tiles (Click to type):")
-cols = st.columns(7)
+# 4. The Word Display (Big and Clear)
+st.title(f"👉 {st.session_state.word}")
+
+# 5. The Letter Buttons (One per row for mobile stability)
+st.write("---")
 for i, l in enumerate(st.session_state.letters):
-    if cols[i].button(l, key=f"tile_{i}"):
+    if st.button(l, key=f"L_{i}"):
         st.session_state.word += l
         st.rerun()
 
-# 5. Display the word being built
-st.markdown(f"## Current: `{st.session_state.word}`")
-
 # 6. Action Buttons
-col_a, col_b, col_c = st.columns([2, 1, 1])
-
-if col_a.button("🚀 SUBMIT MOVE", type="primary"):
-    # Load dictionary only on click to save speed
-    dict_url = "https://raw.githubusercontent.com/tahmid02016/bangla-wordlist/master/words.txt"
-    words_db = set(requests.get(dict_url).text.split())
-    
-    if st.session_state.word in words_db:
+st.write("---")
+if st.button("🚀 SUBMIT WORD", type="primary"):
+    # Check dictionary
+    r = requests.get("https://raw.githubusercontent.com/tahmid02016/bangla-wordlist/master/words.txt")
+    if st.session_state.word in set(r.text.split()):
         pts = len(st.session_state.word)
         if st.session_state.turn == 1: st.session_state.s1 += pts
         else: st.session_state.s2 += pts
-        
-        # Next Turn Logic
         st.session_state.turn = 2 if st.session_state.turn == 1 else 1
         st.session_state.letters = random.sample(POOL, 7)
         st.session_state.word = ""
-        st.success("Valid Word! Points added.")
         st.rerun()
     else:
-        st.error("❌ Invalid Word")
+        st.error("Invalid word!")
 
-if col_b.button("🔙 Delete"):
-    st.session_state.word = st.session_state.word[:-1]
-    st.rerun()
-
-if col_c.button("🗑️ Clear"):
+if st.button("🗑️ Clear"):
     st.session_state.word = ""
     st.rerun()
