@@ -1,86 +1,93 @@
 import streamlit as st
+import requests
 import random
 
-# 1. THE SOUL: CSS Hard-Lock (Kills the "Barcode" look)
-st.set_page_config(page_title="হ য ব র ল PRO", layout="centered")
+# 1. THE SOUL: Fast, Tight Layout
+st.set_page_config(page_title="হ য ব র ল", layout="centered")
+
+@st.cache_resource # Only download the dictionary ONCE (Crucial for playability)
+def load_dict():
+    url = "https://raw.githubusercontent.com/tahmid02016/bangla-wordlist/master/words.txt"
+    try:
+        words = set(requests.get(url).text.split())
+        return words
+    except:
+        return {"কাকা", "বাবা", "মা", "নাম"} # Fallback
+
+WORDS_DB = load_dict()
 
 st.markdown("""
     <style>
-    .block-container { max-width: 550px !important; padding: 10px !important; }
+    .block-container { max-width: 500px !important; padding: 1rem !important; }
     
-    /* THE BOARD: Forced 1:1 Squares */
-    div.stButton > button[key^="b_"] {
-        background-color: #1e272e !important;
-        color: #ecf0f1 !important;
-        border: 1px solid #3d4e5f !important;
-        width: 42px !important; 
-        height: 42px !important; 
-        padding: 0px !important;
-        margin: 0px !important;
-        font-size: 16px !important;
-    }
-
-    /* THE RACK: Zero-Gap wooden holder */
-    .rack-container {
-        display: flex; justify-content: center; gap: 2px;
-        background: linear-gradient(#8b5a2b, #5d3a1a);
-        padding: 10px; border-bottom: 5px solid #3d2611;
-        border-radius: 4px; margin-top: 20px;
+    /* Authentic Wooden Tiles */
+    div.stButton > button { 
+        background-color: #f3cf7a !important; color: #3d2b1f !important; 
+        font-weight: bold !important; font-size: 24px !important;
+        border-radius: 8px !important; border-bottom: 5px solid #b38b4d !important;
+        width: 100% !important; height: 65px !important; margin: 0px !important;
     }
     
-    div.stButton > button[key^="h_"] {
-        background-color: #f3cf7a !important;
-        color: #3e2723 !important;
-        width: 52px !important; height: 62px !important;
-        border: 1px solid #b38b4d !important;
-        box-shadow: 0 4px 0 #b38b4d !important;
-        font-weight: bold !important;
+    /* Display Area */
+    .main-word { 
+        font-size: 60px; text-align: center; color: #f1c40f; 
+        background: #1e272e; border: 3px solid #34495e;
+        border-radius: 15px; margin: 10px 0; min-height: 80px;
     }
 
-    /* Active Player indicator */
-    .active { border-bottom: 3px solid #00d2ff; color: #00d2ff; font-weight: bold; }
+    /* Scoreboard */
+    .sb { display: flex; justify-content: space-between; font-size: 20px; font-weight: bold; }
+    .active { color: #00d2ff; text-decoration: underline; }
     </style>
     """, unsafe_allow_html=True)
 
-# 2. DATA & STATE
-TILES = [('কা',1), ('কি',2), ('কু',3), ('পা',2), ('মা',1), ('বা',2), ('রে',3), ('লা',2), ('না',1)]
-SUB = {"1":"₁", "2":"₂", "3":"₃", "4":"₄", "5":"₅", "6":"₆", "7":"₇", "8":"₈", "9":"₉", "0":"₀"}
+# 2. State Setup
+POOL = ['ক', 'খ', 'গ', 'ঘ', 'চ', 'ছ', 'জ', 'ত', 'দ', 'ন', 'প', 'ব', 'ম', 'র', 'ল', 'স', 'হ', 'া', 'ি', 'ু', 'ে', 'ো', 'ং', '্']
+if 's1' not in st.session_state:
+    st.session_state.update({'s1':0, 's2':0, 'turn':1, 'word':"", 'letters':random.sample(POOL, 7)})
 
-if 'board' not in st.session_state: st.session_state.board = [["" for _ in range(11)] for _ in range(11)]
-if 'hand' not in st.session_state: st.session_state.hand = random.sample(TILES, 7)
-if 'scores' not in st.session_state: st.session_state.scores = {"Player 1": 0, "Player 2": 0}
-if 'turn' not in st.session_state: st.session_state.turn = "Player 1"
-if 'sel_idx' not in st.session_state: st.session_state.sel_idx = None
+# 3. Scoreboard & UI
+turn = st.session_state.turn
+st.markdown(f"""
+<div class="sb">
+    <div class="{'active' if turn==1 else ''}">P1: {st.session_state.s1}</div>
+    <div class="{'active' if turn==2 else ''}">P2: {st.session_state.s2}</div>
+</div>
+""", unsafe_allow_html=True)
 
-# 3. HEADER & SCOREBOARD
-st.markdown("<h1 style='text-align: center;'>হ য ব র ল</h1>", unsafe_allow_html=True)
-s1, s2 = st.columns(2)
-s1.markdown(f"<div class='{'active' if st.session_state.turn == 'Player 1' else ''}' style='text-align:center;'>PLAYER 1: {st.session_state.scores['Player 1']}</div>", unsafe_allow_html=True)
-s2.markdown(f"<div class='{'active' if st.session_state.turn == 'Player 2' else ''}' style='text-align:center;'>PLAYER 2: {st.session_state.scores['Player 2']}</div>", unsafe_allow_html=True)
+st.markdown(f"<div class='main-word'>{st.session_state.word}</div>", unsafe_allow_html=True)
 
-# 4. THE BOARD (Perfect Grid)
-for r in range(11):
-    cols = st.columns(11)
-    for c in range(11):
-        val = st.session_state.board[r][c]
-        if cols[c].button(val if val else " ", key=f"b_{r}_{c}"):
-            if st.session_state.sel_idx is not None:
-                char, pts = st.session_state.hand[st.session_state.sel_idx]
-                st.session_state.board[r][c] = char
-                st.session_state.scores[st.session_state.turn] += pts
-                st.session_state.hand[st.session_state.sel_idx] = random.choice(TILES)
-                st.session_state.sel_idx = None
-                st.rerun()
-
-# 5. THE RACK (The Holder)
-st.markdown("<div class='rack-container'>", unsafe_allow_html=True)
-h_cols = st.columns(7)
-for i, (char, pts) in enumerate(st.session_state.hand):
-    pt_sub = "".join(SUB.get(d, d) for d in str(pts))
-    if h_cols[i].button(f"{char}{pt_sub}", key=f"h_{i}"):
-        st.session_state.sel_idx = i
+# 4. Interactive Tiles
+cols = st.columns(7)
+for i, l in enumerate(st.session_state.letters):
+    if cols[i].button(l, key=f"t_{i}"):
+        st.session_state.word += l
         st.rerun()
 
-if st.button(f"DONE / SWITCH TO {'PLAYER 2' if st.session_state.turn == 'Player 1' else 'PLAYER 1'}", use_container_width=True):
-    st.session_state.turn = "Player 2" if st.session_state.turn == "Player 1" else "Player 1"
+# 5. Logic Controls
+st.write("---")
+c1, c2, c3 = st.columns([2, 1, 1])
+
+if c1.button("🔥 SUBMIT", use_container_width=True, type="primary"):
+    if st.session_state.word in WORDS_DB:
+        pts = len(st.session_state.word)
+        if st.session_state.turn == 1: st.session_state.s1 += pts
+        else: st.session_state.s2 += pts
+        
+        st.session_state.turn = 2 if st.session_state.turn == 1 else 1
+        st.session_state.letters = random.sample(POOL, 7)
+        st.session_state.word = ""
+        st.toast("Valid Word!")
+        st.rerun()
+    else:
+        st.error("Not in dictionary!")
+
+if c2.button("🔙 Del", use_container_width=True):
+    st.session_state.word = st.session_state.word[:-1]
+    st.rerun()
+
+if c3.button("🔄 Swap", use_container_width=True):
+    st.session_state.turn = 2 if st.session_state.turn == 1 else 1
+    st.session_state.letters = random.sample(POOL, 7)
+    st.session_state.word = ""
     st.rerun()
