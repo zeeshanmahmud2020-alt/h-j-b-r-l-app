@@ -1,94 +1,90 @@
 import streamlit as st
 import random
 
-# 1. THE ENGINE: CSS Grid for a real board look
+# 1. THE SOUL: Hard-Locked CSS (Prevents the "Barcode" stretching)
 st.set_page_config(page_title="হ য ব র ল PRO", layout="centered")
 
 st.markdown("""
     <style>
-    .block-container { max-width: 550px !important; padding: 10px !important; }
+    .block-container { max-width: 500px !important; padding: 10px !important; }
     
-    /* THE BOARD: No more 'button gaps' */
-    .board-grid {
-        display: grid;
-        grid-template-columns: repeat(11, 1fr);
-        gap: 2px;
-        background-color: #1a1a1a;
-        padding: 5px;
-        border: 4px solid #3d2b1f;
-        border-radius: 4px;
+    /* THE RACK: Physical bar */
+    .rack-container {
+        display: flex; justify-content: center; gap: 4px;
+        background: linear-gradient(#8b5a2b, #5d3a1a);
+        padding: 12px; border-bottom: 6px solid #3d2611;
+        margin-top: 20px; border-radius: 4px;
     }
 
-    /* TILES: Real wooden board look */
-    div.stButton > button {
-        border-radius: 2px !important;
-        margin: 0 !important;
-        width: 100% !important;
-        aspect-ratio: 1/1 !important;
-    }
-
-    /* Board Tile Colors */
+    /* TILES: Wooden look */
+    div.stButton > button { border-radius: 2px !important; font-family: sans-serif !important; }
+    
+    /* Board Tiles (Forced Squares) */
     div.stButton > button[key^="b_"] {
-        background-color: #2c3e50 !important;
-        color: #ecf0f1 !important;
-        font-size: 16px !important;
-        border: 1px solid #34495e !important;
+        background-color: #263238 !important; color: #546e7a !important;
+        width: 38px !important; height: 38px !important; border: 1px solid #1a252f !important;
     }
 
-    /* Rack Tile Colors */
+    /* Rack Tiles */
     div.stButton > button[key^="h_"] {
-        background-color: #f3cf7a !important;
-        color: #3e2723 !important;
-        font-weight: bold !important;
-        box-shadow: 0 4px 0 #b38b4d !important;
+        background-color: #f3cf7a !important; color: #3e2723 !important;
+        width: 45px !important; height: 55px !important; font-size: 20px !important;
+        border: 1px solid #b38b4d !important; box-shadow: 0 4px 0 #b38b4d !important;
     }
-    
-    .active-p { color: #00d2ff; font-weight: bold; font-size: 20px; }
+
+    /* SUBMIT BUTTON: Green Professional Look */
+    div.stButton > button[key="submit_btn"] {
+        background-color: #27ae60 !important; color: white !important;
+        width: 100% !important; height: 50px !important; font-size: 20px !important;
+        margin-top: 20px !important; border: none !important;
+    }
     </style>
     """, unsafe_allow_html=True)
 
-# 2. DATA & STATE
+# 2. Logic: Fixed Attribute Errors & Scoring
+SUB = {"1":"₁", "2":"₂", "3":"₃", "4":"₄", "5":"₅", "6":"₆", "7":"₇", "8":"₈", "9":"₉", "0":"₀"}
 TILES = [('কা',1), ('কি',2), ('কু',3), ('পা',2), ('মা',1), ('বা',2), ('রে',3), ('লা',2), ('না',1)]
 
-for key in ['board', 'p1_score', 'p2_score', 'turn', 'sel_idx', 'hand']:
-    if 'board' not in st.session_state: st.session_state.board = [["" for _ in range(11)] for _ in range(11)]
-    if 'hand' not in st.session_state: st.session_state.hand = random.sample(TILES, 7)
-    if 'p1_score' not in st.session_state: st.session_state.p1_score, st.session_state.p2_score = 0, 0
-    if 'turn' not in st.session_state: st.session_state.turn = 1
-    if 'sel_idx' not in st.session_state: st.session_state.sel_idx = None
+# Initialize session states to prevent crashes
+if 'board' not in st.session_state: st.session_state.board = [["" for _ in range(11)] for _ in range(11)]
+if 'hand' not in st.session_state: st.session_state.hand = random.sample(TILES, 7)
+if 'sel_idx' not in st.session_state: st.session_state.sel_idx = None
+if 'score' not in st.session_state: st.session_state.score = 0
+if 'placed_tiles' not in st.session_state: st.session_state.placed_tiles = []
 
-# 3. SCOREBOARD
-st.markdown("<h1 style='text-align: center;'>হ য ব র ল</h1>", unsafe_allow_html=True)
-s1, s2 = st.columns(2)
-s1.markdown(f"<div class='{'active-p' if st.session_state.turn==1 else ''}'>PLAYER 1: {st.session_state.p1_score}</div>", unsafe_allow_html=True)
-s2.markdown(f"<div class='{'active-p' if st.session_state.turn==2 else ''}'>PLAYER 2: {st.session_state.p2_score}</div>", unsafe_allow_html=True)
+st.markdown(f"<h2 style='text-align:center;'>Score: {st.session_state.score}</h2>", unsafe_allow_html=True)
 
-# 4. THE LEGIT BOARD
-# Using a container and manual columns to simulate the grid accurately
-board_container = st.container()
-with board_container:
-    for r in range(11):
-        cols = st.columns(11)
-        for c in range(11):
-            val = st.session_state.board[r][c]
-            if cols[c].button(val if val else " ", key=f"b_{r}_{c}"):
-                if st.session_state.sel_idx is not None:
-                    char, pts = st.session_state.hand[st.session_state.sel_idx]
-                    st.session_state.board[r][c] = char
-                    if st.session_state.turn == 1: st.session_state.p1_score += pts
-                    else: st.session_state.p2_score += pts
-                    st.session_state.hand[st.session_state.sel_idx] = random.choice(TILES)
-                    st.session_state.sel_idx = None
-                    st.rerun()
+# 3. The Board
+for r in range(11):
+    cols = st.columns(11)
+    for c in range(11):
+        val = st.session_state.board[r][c]
+        if cols[c].button(val if val else " ", key=f"b_{r}_{c}"):
+            if st.session_state.sel_idx is not None:
+                tile_data = st.session_state.hand[st.session_state.sel_idx]
+                st.session_state.board[r][c] = tile_data[0]
+                st.session_state.placed_tiles.append(tile_data[1]) # Track points
+                st.session_state.hand[st.session_state.sel_idx] = random.choice(TILES)
+                st.session_state.sel_idx = None
+                st.rerun()
 
-# 5. THE RACK
-st.write("### Your Tiles")
+# 4. The Rack
+st.markdown("<div class='rack-container'>", unsafe_allow_html=True)
 h_cols = st.columns(7)
 for i, (char, pts) in enumerate(st.session_state.hand):
-    if h_cols[i].button(f"{char}", key=f"h_{i}"):
+    pt_sub = "".join(SUB.get(d, d) for d in str(pts))
+    if h_cols[i].button(f"{char}{pt_sub}", key=f"h_{i}"):
         st.session_state.sel_idx = i
         st.rerun()
+st.markdown("</div>", unsafe_allow_html=True)
 
-if st.button("DONE / SWITCH TURN", use_container_width=True):
-    st.session_state.turn = 2 if st.session_state.turn == 1 else 1
-    st.rerun()
+# 5. THE SUBMIT BUTTON
+if st.button("🔥 SUBMIT WORD", key="submit_btn"):
+    if st.session_state.placed_tiles:
+        st.session_state.score += sum(st.session_state.placed_tiles)
+        # Clear the board or keep the word? Keeping for now to feel like a real game.
+        st.session_state.placed_tiles = [] 
+        st.toast("Word Submitted!")
+        st.rerun()
+    else:
+        st.error("Place some tiles first!")
