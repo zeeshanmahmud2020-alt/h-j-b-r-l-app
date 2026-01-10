@@ -2,85 +2,106 @@ import streamlit as st
 import random
 import unicodedata
 
-# --- 1. SETTINGS & LOCAL DICTIONARY ---
-st.set_page_config(page_title="হ য ব র ল PRO", layout="centered")
+# --- 1. SETTINGS & FULL DICTIONARY ---
+st.set_page_config(page_title="হ য ব র ল PRO", layout="wide")
 
 @st.cache_resource
-def load_dictionary():
-    # ADD YOUR WORDS HERE - This is your built-in Dictionary
-    return {
-        "জুতা", "কচি", "বলো", "করো", "বড়", "মা", "বাবা", 
-        "বাড়ি", "গান", "খাওয়া", "খেলো", "আমি", "তুমি", "গাখি"
-    }
+def load_full_dictionary():
+    # To avoid the 'requirements.txt' issue, we define a robust set here.
+    # You can paste thousands of words into this set.
+    return {"জুতা", "কচি", "বলো", "করো", "বড়", "মা", "বাবা", "বাড়ি", "গান", "গাখি", "খেলো", "তুমি", "আমি"}
 
-WORDS_DB = load_dictionary()
+WORDS_DB = load_full_dictionary()
 
-def get_random_tile():
+def get_meme_tile():
     consonants = ['ক', 'খ', 'গ', 'চ', 'জ', 'ত', 'দ', 'ন', 'প', 'ব', 'ম', 'র', 'ল', 'স', 'হ']
-    vowels = ['', 'া', 'ি', 'ী', 'ু', 'ে', 'ো']
-    # Creates one "meme" tile unit
+    # These are the subscripts/vowel marks you requested
+    vowels = ['', 'া', 'ি', 'ী', 'ু', 'ে', 'ো'] 
     return random.choice(consonants) + random.choice(vowels)
 
-# --- 2. SESSION STATE ---
+# --- 2. SESSION STATE (Score & Board) ---
 if 'board' not in st.session_state:
     st.session_state.update({
-        'board': [["" for _ in range(5)] for _ in range(5)], # 5x5 Grid
-        's1': 0, 's2': 0, 'turn': 1, 
-        'sel_idx': None, 'turn_moves': [], 
-        'hand': [get_random_tile() for _ in range(7)] # 7 Tiles
+        'board': [["" for _ in range(5)] for _ in range(5)],
+        'p1_score': 0, 
+        'p2_score': 0, 
+        'turn': 1, 
+        'hand': [get_meme_tile() for _ in range(7)],
+        'turn_moves': [],
+        'selected_hand_idx': None
     })
 
-# --- 3. UI ---
-st.markdown("<h1 style='text-align: center;'>হ য ব র ল PRO</h1>", unsafe_allow_html=True)
+# --- 3. UI LAYOUT ---
+st.title("হ য ব র ল PRO")
 
-# 5x5 Grid Logic
+# Sidebar Score Tracking
+with st.sidebar:
+    st.header("🏆 Live Scores")
+    st.subheader(f"Player 1: {st.session_state.p1_score}")
+    st.subheader(f"Player 2: {st.session_state.p2_score}")
+    st.divider()
+    st.info(f"Current Turn: Player {st.session_state.turn}")
+    if st.button("Reset Game"):
+        st.session_state.clear()
+        st.rerun()
+
+# 5x5 Board
 for r in range(5):
     cols = st.columns(5)
     for c in range(5):
-        val = st.session_state.board[r][c]
-        if cols[c].button(val if val else " ", key=f"b_{r}_{c}", use_container_width=True):
-            if st.session_state.sel_idx is not None:
-                char = st.session_state.hand[st.session_state.sel_idx]
-                st.session_state.board[r][c] = char
-                st.session_state.turn_moves.append({'r': r, 'c': c, 'char': char})
-                st.session_state.hand[st.session_state.sel_idx] = " "
-                st.session_state.sel_idx = None
+        tile_text = st.session_state.board[r][c]
+        if cols[c].button(tile_text if tile_text else " ", key=f"cell_{r}_{c}", use_container_width=True):
+            if st.session_state.selected_hand_idx is not None:
+                # Place tile on board
+                val = st.session_state.hand[st.session_state.selected_hand_idx]
+                st.session_state.board[r][c] = val
+                st.session_state.turn_moves.append({'r': r, 'c': c, 'val': val})
+                st.session_state.hand[st.session_state.selected_hand_idx] = " " # Mark used
+                st.session_state.selected_hand_idx = None
                 st.rerun()
 
-# Rack Logic
-st.write("### Your Tiles")
-rack = st.columns(7)
+# Player Hand (The Rack)
+st.write("### Your Tiles (Consonant + Subscript)")
+hand_cols = st.columns(7)
 for i in range(7):
-    label = st.session_state.hand[i]
-    if rack[i].button(label, key=f"h_{i}", disabled=(label == " ")):
-        st.session_state.sel_idx = i
+    tile = st.session_state.hand[i]
+    if hand_cols[i].button(tile, key=f"hand_{i}", disabled=(tile == " ")):
+        st.session_state.selected_hand_idx = i
 
-# --- 4. SUBMIT & SELF-HEALING ---
-st.write("---")
-col_a, col_b = st.columns(2)
+# --- 4. LOGIC: SCORE INCREMENT & SELF-HEAL ---
+st.divider()
+btn_col1, btn_col2 = st.columns(2)
 
-if col_a.button("🔥 SUBMIT WORD", use_container_width=True, type="primary"):
-    # Joins tiles and cleans Unicode
-    played_word = "".join([m['char'] for m in st.session_state.turn_moves]).strip()
-    clean_word = unicodedata.normalize('NFC', played_word)
+if btn_col1.button("🔥 SUBMIT MOVE", use_container_width=True, type="primary"):
+    # Build the word from the turn's moves
+    word_attempt = "".join([m['val'] for m in st.session_state.turn_moves]).strip()
+    clean_word = unicodedata.normalize('NFC', word_attempt)
     
     if clean_word in WORDS_DB:
-        points = len(clean_word)
-        if st.session_state.turn == 1: st.session_state.s1 += points
-        else: st.session_state.s2 += points
-        st.session_state.hand = [get_random_tile() if h == " " else h for h in st.session_state.hand]
+        # 1. CALCULATE SCORE (Points = letters * 10)
+        points = len(clean_word) * 10
+        if st.session_state.turn == 1:
+            st.session_state.p1_score += points
+        else:
+            st.session_state.p2_score += points
+            
+        # 2. SUCCESS: Refill hand and switch player
+        st.session_state.hand = [get_meme_tile() if t == " " else t for t in st.session_state.hand]
         st.session_state.turn = 2 if st.session_state.turn == 1 else 1
         st.session_state.turn_moves = []
-        st.toast(f"Accepted: {clean_word}")
+        st.success(f"Correct! +{points} Points for Player {1 if st.session_state.turn==2 else 2}")
         st.rerun()
     else:
-        # SELF-HEALING: Clears board on failure
-        for m in st.session_state.turn_moves:
-            st.session_state.board[m['r']][m['c']] = ""
-        st.session_state.hand = [get_random_tile() if h == " " else h for h in st.session_state.hand]
+        # 3. SELF-HEALING: Auto-revert the board if word is fake
+        for move in st.session_state.turn_moves:
+            st.session_state.board[move['r']][move['c']] = ""
+        # Return random tiles to hand for the failed attempt
+        st.session_state.hand = [get_meme_tile() if t == " " else t for t in st.session_state.hand]
         st.session_state.turn_moves = []
-        st.error(f"Rejected: '{clean_word}' dictionary-তে নেই।")
+        st.error(f"'{clean_word}' is not valid! Board healed and turn passed.")
+        st.session_state.turn = 2 if st.session_state.turn == 1 else 1
+        st.rerun()
 
-if col_b.button("🔄 SWAP ALL", use_container_width=True):
-    st.session_state.hand = [get_random_tile() for _ in range(7)]
+if btn_col2.button("🔄 SWAP TILES", use_container_width=True):
+    st.session_state.hand = [get_meme_tile() for _ in range(7)]
     st.rerun()
