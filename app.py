@@ -2,76 +2,73 @@ import streamlit as st
 import requests
 import random
 
-# 1. Page Config
-st.set_page_config(page_title="H-J-B-R-L BD", page_icon="🎮", layout="centered")
+# 1. Setup
+st.set_page_config(page_title="H-J-B-R-L BD", layout="centered")
 
-# 2. UI Styling (7 tiles fit best on mobile)
+# 2. UI Styling
 st.markdown("""
     <style>
-    .tile-container { display: flex; justify-content: center; flex-wrap: wrap; margin-bottom: 20px; }
+    .tile-container { display: flex; justify-content: center; margin-bottom: 10px; }
     .tile {
-        background-color: #f3cf7a; color: #3d2b1f; padding: 15px;
-        border-radius: 8px; font-weight: bold; font-size: 28px;
+        background-color: #f3cf7a; color: #3d2b1f; padding: 10px;
+        border-radius: 8px; font-weight: bold; font-size: 24px;
         margin: 5px; border-bottom: 4px solid #b38b4d;
-        width: 55px; height: 55px; display: flex;
+        width: 50px; height: 50px; display: flex;
         align-items: center; justify-content: center;
-        box-shadow: 2px 2px 5px rgba(0,0,0,0.3);
     }
     </style>
     """, unsafe_allow_html=True)
 
-# 3. Game Memory (Standard 7 tiles)
+# 3. Logic & Vowels
 POOL = ['ক', 'খ', 'গ', 'ঘ', 'চ', 'ছ', 'জ', 'ত', 'দ', 'ন', 'প', 'ব', 'ম', 'র', 'ল', 'স', 'হ', 
         'অ', 'আ', 'ই', 'উ', 'এ', 'ও', 'া', 'ি', 'ী', 'ু', 'ূ', 'ে', 'ৈ', 'ো', 'ৌ']
 
 if 's1' not in st.session_state:
-    st.session_state.s1, st.session_state.s2, st.session_state.turn = 0, 0, 1
-    st.session_state.letters = random.sample(POOL, 7)
-    st.session_state.input_val = ""
+    st.session_state.update({'s1':0, 's2':0, 'turn':1, 'input_val':"", 'letters':random.sample(POOL, 7)})
 
-# 4. Scoreboard
+# 4. Display
 st.title("𝐇-𝐉-𝐁-𝐑-𝐋 𝐁𝐃")
-c1, c2 = st.columns(2)
-c1.metric("Player 1", st.session_state.s1)
-c2.metric("Player 2", st.session_state.s2)
-st.write(f"### 👉 Player {st.session_state.turn}'s Turn")
+st.write(f"**P1:** {st.session_state.s1} | **P2:** {st.session_state.s2} — **Player {st.session_state.turn}'s Turn**")
 
-# 5. Wooden Tiles (Now 7)
+# Show tiles visually
 tiles_html = '<div class="tile-container">' + "".join([f'<div class="tile">{l}</div>' for l in st.session_state.letters]) + '</div>'
 st.markdown(tiles_html, unsafe_allow_html=True)
 
-# 6. Special Characters
-st.write("Special Characters:")
-sc1, sc2, sc3, sc4 = st.columns(4)
-if sc1.button("্"): st.session_state.input_val += "্"
-if sc2.button("ঁ"): st.session_state.input_val += "ঁ"
-if sc3.button("ং"): st.session_state.input_val += "ং"
-if sc4.button("ঃ"): st.session_state.input_val += "ঃ"
+# Make letters clickable via buttons
+st.write("Click to type:")
+cols = st.columns(7)
+for i, l in enumerate(st.session_state.letters):
+    if cols[i].button(l, key=f"btn_{i}"):
+        st.session_state.input_val += l
 
-# 7. Validation Logic
+# 5. Validation Logic
 @st.cache_data
 def load_dict():
-    url = "https://raw.githubusercontent.com/tahmid02016/bangla-wordlist/master/words.txt"
-    return set(requests.get(url).text.split())
+    return set(requests.get("https://raw.githubusercontent.com/tahmid02016/bangla-wordlist/master/words.txt").text.split())
 
 words_db = load_dict()
-word_input = st.text_input("Type word:", value=st.session_state.input_val)
+word_input = st.text_input("Your Word:", value=st.session_state.input_val)
 
-if st.button("Submit Move"):
-    if word_input in words_db:
+if st.button("Submit Move", type="primary"):
+    # Check if word is in Dictionary AND letters are in Hand
+    in_dict = word_input in words_db
+    in_hand = all(word_input.count(char) <= st.session_state.letters.count(char) for char in word_input)
+    
+    if in_dict and in_hand:
         points = len(word_input)
-        if st.session_state.turn == 1:
-            st.session_state.s1 += points
-            st.session_state.turn = 2
-        else:
-            st.session_state.s2 += points
-            st.session_state.turn = 1
+        if st.session_state.turn == 1: st.session_state.s1 += points
+        else: st.session_state.s2 += points
+        
+        # Reset turn
+        st.session_state.turn = 2 if st.session_state.turn == 1 else 1
         st.session_state.letters = random.sample(POOL, 7)
-        st.session_state.input_val = "" 
+        st.session_state.input_val = ""
         st.rerun()
+    elif not in_hand:
+        st.error("❌ Use ONLY the letters provided in your hand!")
     else:
-        st.error("❌ Invalid word!")
+        st.error("❌ Not a valid Bengali word.")
 
-if st.sidebar.button("Reset Game"):
-    st.session_state.clear()
+if st.button("Clear Input"):
+    st.session_state.input_val = ""
     st.rerun()
