@@ -24,8 +24,14 @@ if 'board' not in st.session_state:
         's1': 0, 's2': 0, 'turn': 1, 'sel_idx': None, 'turn_moves': []
     })
     # Basic pool for testing
-    pool = ['অ', 'আ', 'ই', 'উ', 'ক', 'খ', 'গ', 'ঘ', 'চ', 'ছ', 'জ', 'ট', 'ত', 'দ', 'ন', 'প', 'ব', 'ম', 'য', 'র', 'ল', 'শ', 'স', 'হ']
-    st.session_state.hand = [random.choice(pool) for _ in range(7)]
+# Replace the old pool with this complete one
+pool = [
+    'অ', 'আ', 'ই', 'উ', 'এ', 'ও', 
+    'ক', 'খ', 'গ', 'ঘ', 'ঙ', 'চ', 'ছ', 'জ', 'ঝ', 'ঞ', 
+    'ট', 'ঠ', 'ড', 'ঢ', 'ণ', 'ত', 'থ', 'দ', 'ধ', 'ন', 
+    'প', 'ফ', 'ব', 'ভ', 'ম', 'য', 'র', 'ল', 'শ', 'ষ', 'স', 'হ',
+    'া', 'ি', 'ী', 'ু', 'ূ', 'ে', 'ৈ', 'ো', 'ৌ', '্'
+]    st.session_state.hand = [random.choice(pool) for _ in range(7)]
 
 # --- 3. SIDEBAR (The Executive Audit) ---
 with st.sidebar:
@@ -78,3 +84,4 @@ if st.button("🔥 SUBMIT WORD", use_container_width=True, type="primary"):
             st.session_state.board[move['r']][move['c']] = ""
         st.session_state.turn_moves = []
         st.error(f"REJECTED! '{clean_word}' is not in your list.")
+
