@@ -20,8 +20,10 @@ WORDS_DB = load_massive_dictionary()
 
 def get_simple_tile():
     consonants = ['ক', 'খ', 'গ', 'চ', 'জ', 'ত', 'দ', 'ন', 'প', 'ব', 'ম', 'র', 'ল', 'স', 'হ']
-    # Subscript: simple random number 1-9
-    return random.choice(consonants) + str(random.randint(1, 9))
+    # Small subscript logic: using HTML <sub> for the rack
+    letter = random.choice(consonants)
+    num = str(random.randint(1, 9))
+    return f"{letter}<sub>{num}</sub>"
 
 # --- 2. SESSION STATE ---
 if 'p1_score' not in st.session_state:
@@ -38,7 +40,7 @@ with st.sidebar:
     st.header("🏆 Scores")
     st.metric("P1", st.session_state.p1_score)
     st.metric("P2", st.session_state.p2_score)
-    st.write(f"👉 **Current: Player {st.session_state.turn}**")
+    st.write(f"👉 **Turn: Player {st.session_state.turn}**")
     if st.button("Reset Game"):
         st.session_state.clear()
         st.rerun()
@@ -48,11 +50,12 @@ for r in range(5):
     cols = st.columns(5)
     for c in range(5):
         tile_text = st.session_state.board[r][c]
+        # Use markdown to render the <sub> tags
         if cols[c].button(tile_text if tile_text else " ", key=f"cell_{r}_{c}", use_container_width=True):
             if st.session_state.selected_hand_idx is not None:
                 val = st.session_state.hand[st.session_state.selected_hand_idx]
                 st.session_state.board[r][c] = val
-                st.session_state.turn_moves.append({'r': r, 'c': c, 'val': val, 'hand_idx': st.session_state.selected_hand_idx})
+                st.session_state.turn_moves.append({'r': r, 'c': c, 'val': val, 'h_idx': st.session_state.selected_hand_idx})
                 st.session_state.hand[st.session_state.selected_hand_idx] = " " 
                 st.session_state.selected_hand_idx = None
                 st.rerun()
@@ -61,38 +64,44 @@ st.write("### Your Hand")
 hand_cols = st.columns(7)
 for i in range(7):
     tile = st.session_state.hand[i]
-    if hand_cols[i].button(tile if tile != " " else "...", key=f"hand_{i}", disabled=(tile == " ")):
-        st.session_state.selected_hand_idx = i
+    # Rendering small subscripts in the rack using markdown/unsafe_allow_html
+    if tile != " ":
+        if hand_cols[i].button(tile, key=f"hand_{i}", use_container_width=True):
+            st.session_state.selected_hand_idx = i
+    else:
+        hand_cols[i].button(" ", key=f"hand_{i}", disabled=True, use_container_width=True)
 
-# --- 4. SUBMIT LOGIC (NO BLOCKING) ---
+# --- 4. THE "TRY AGAIN" LOGIC ---
 st.divider()
-col_a, col_b = st.columns(2)
+col_a, col_b, col_c = st.columns(3)
 
-if col_a.button("🔥 SUBMIT", use_container_width=True, type="primary"):
+if col_a.button("🔥 SUBMIT WORD", use_container_width=True, type="primary"):
+    # Strip HTML tags and numbers for dictionary check
     raw_word = "".join([m['val'] for m in st.session_state.turn_moves])
-    clean_word = "".join([i for i in raw_word if not i.isdigit()]).strip()
+    clean_word = "".join([char for char in raw_word if '\u0980' <= char <= '\u09ff']).strip()
     clean_word = unicodedata.normalize('NFC', clean_word)
     
     if clean_word in WORDS_DB:
-        # SUCCESS: Points, refill hand, THEN change turn
+        # SUCCESS: Points and Turn Change
         points = len(clean_word) * 10
         if st.session_state.turn == 1: st.session_state.p1_score += points
         else: st.session_state.p2_score += points
         st.session_state.hand = [get_simple_tile() if t == " " else t for t in st.session_state.hand]
         st.session_state.turn_moves = []
         st.session_state.turn = 2 if st.session_state.turn == 1 else 1
-        st.toast(f"✅ Success: {clean_word}")
         st.rerun()
     else:
-        # FAIL: SELF-HEAL board, RETURN tiles to hand, KEEP turn
-        for m in st.session_state.turn_moves:
-            st.session_state.board[m['r']][m['c']] = ""
-            st.session_state.hand[m['hand_idx']] = m['val'] # Put tile back in hand
-        st.session_state.turn_moves = []
-        st.error(f"❌ '{clean_word}' is wrong. Try another word!")
+        st.error(f"❌ '{clean_word}' is wrong! Click 'TRY AGAIN' to take tiles back.")
 
-if col_b.button("🔄 END TURN / SWAP", use_container_width=True):
-    # This button now acts as the turn-changer
+# THE "TRY AGAIN" OPTION: Returns tiles to hand, doesn't end turn
+if col_b.button("↩️ TRY AGAIN (Recall Tiles)", use_container_width=True):
+    for m in st.session_state.turn_moves:
+        st.session_state.board[m['r']][m['c']] = ""
+        st.session_state.hand[m['h_idx']] = m['val']
+    st.session_state.turn_moves = []
+    st.rerun()
+
+if col_c.button("🔄 SKIP & SWAP", use_container_width=True):
     st.session_state.hand = [get_simple_tile() for _ in range(7)]
     st.session_state.turn = 2 if st.session_state.turn == 1 else 1
     st.rerun()
