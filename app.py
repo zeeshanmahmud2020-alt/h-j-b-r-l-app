@@ -2,7 +2,7 @@ import streamlit as st
 import random
 import requests
 
-# 1. THE SOUL: Graphics & Layout
+# 1. GRAPHICS & SIDEBAR
 st.set_page_config(page_title="হ য ব র ল PRO", layout="centered")
 
 @st.cache_resource
@@ -19,11 +19,9 @@ WORDS_DB = load_dict()
 st.markdown("""
     <style>
     .block-container { max-width: 550px !important; padding: 10px !important; }
+    .game-title { text-align: center; font-size: 45px; font-weight: bold; color: #f1c40f; }
     
-    /* THE TITLE: Centered and Bold */
-    .game-title { text-align: center; font-size: 50px; font-weight: bold; color: #f1c40f; margin-bottom: 10px; }
-
-    /* THE BOARD: Physical square buttons */
+    /* THE BOARD: Physical squares */
     div.stButton > button[key^="b_"] {
         background-color: #1e272e !important; color: #ecf0f1 !important;
         width: 44px !important; height: 44px !important;
@@ -48,24 +46,31 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# 2. ROBUST INITIALIZATION
+# 2. INITIALIZATION
 SUB = {"1":"₁", "2":"₂", "3":"₃", "4":"₄", "5":"₅"}
-POOL = [('কা',1), ('কি',2), ('কু',2), ('কে',3), ('কো',3), ('পা',1), ('পি',2), ('পু',2), ('মা',1), ('মি',2), ('বা',1), ('বি',2), ('রা',2), ('রে',2), ('না',1), ('নি',2)]
+POOL = [('কা',1), ('কি',2), ('কু',2), ('কে',3), ('পা',1), ('মা',1), ('বা',1), ('রা',2), ('না',1)]
 
 if 'board' not in st.session_state: st.session_state.board = [["" for _ in range(11)] for _ in range(11)]
 if 'hand' not in st.session_state: st.session_state.hand = random.sample(POOL, 7)
 if 'scores' not in st.session_state: st.session_state.scores = {"P1": 0, "P2": 0}
 if 'turn' not in st.session_state: st.session_state.turn = "P1"
 if 'sel_idx' not in st.session_state: st.session_state.sel_idx = None
-if 'turn_data' not in st.session_state: st.session_state.turn_data = []
+if 'turn_data' not in st.session_state: st.session_state.turn_data = [] # Buffer for tiles placed this turn
 
-# 3. HEADER: Restored Title & Score
+# 3. SIDEBAR (The Legit Stats)
+with st.sidebar:
+    st.header("📊 Game Stats")
+    st.metric("Player 1 Score", st.session_state.scores["P1"])
+    st.metric("Player 2 Score", st.session_state.scores["P2"])
+    st.write(f"👉 Current Turn: **{st.session_state.turn}**")
+    if st.button("🔄 Restart Game"):
+        st.session_state.clear()
+        st.rerun()
+
+# 4. MAIN UI
 st.markdown("<div class='game-title'>হ য ব র ল</div>", unsafe_allow_html=True)
-c1, c2 = st.columns(2)
-c1.metric("Player 1", st.session_state.scores["P1"])
-c2.metric("Player 2", st.session_state.scores["P2"])
 
-# 4. THE BOARD (11x11 Grid)
+# THE BOARD (11x11 Grid)
 for r in range(11):
     cols = st.columns(11)
     for c in range(11):
@@ -74,12 +79,13 @@ for r in range(11):
             if st.session_state.sel_idx is not None:
                 char, pts = st.session_state.hand[st.session_state.sel_idx]
                 st.session_state.board[r][c] = char
+                # ADD TO BUFFER, NOT SCORE
                 st.session_state.turn_data.append((r, c, char, pts))
                 st.session_state.hand[st.session_state.sel_idx] = random.choice(POOL)
                 st.session_state.sel_idx = None
                 st.rerun()
 
-# 5. THE RACK
+# THE RACK
 st.markdown("<div class='rack-container'>", unsafe_allow_html=True)
 h_cols = st.columns(7)
 for i, (char, pts) in enumerate(st.session_state.hand):
@@ -87,22 +93,23 @@ for i, (char, pts) in enumerate(st.session_state.hand):
         st.session_state.sel_idx = i
         st.rerun()
 
-# 6. DICTIONARY CHECK & REWIRE (Self-Healing)
+# 5. THE GATEKEEPER (The Only Way To Score)
 word = "".join([d[2] for d in st.session_state.turn_data])
-st.write(f"**Turn:** {st.session_state.turn} | **Drafting:** {word}")
+st.write(f"Drafting: **{word if word else '...'}**")
 
 if st.button("🔥 SUBMIT WORD", use_container_width=True, type="primary"):
     if len(word) > 1 and word in WORDS_DB:
-        turn_pts = sum([d[3] for d in st.session_state.turn_data])
-        st.session_state.scores[st.session_state.turn] += turn_pts
+        # VALID WORD: Award points and switch turns
+        points = sum([d[3] for d in st.session_state.turn_data])
+        st.session_state.scores[st.session_state.turn] += points
         st.session_state.turn = "P2" if st.session_state.turn == "P1" else "P1"
         st.session_state.turn_data = [] 
-        st.success(f"'{word}' Accepted! (+{turn_pts})")
+        st.success(f"Accepted! +{points} points.")
         st.rerun()
     else:
-        # GIBBERISH REJECTION: Clean the board
+        # GIBBERISH: Wipe board, No score given
         for r, c, char, pts in st.session_state.turn_data:
             st.session_state.board[r][c] = ""
         st.session_state.turn_data = []
-        st.error(f"'{word}' is invalid. Move wiped from board.")
+        st.error(f"'{word}' is not a valid word. Tiles removed.")
         st.rerun()
