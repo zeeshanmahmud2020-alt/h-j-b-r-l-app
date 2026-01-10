@@ -1,105 +1,94 @@
 import streamlit as st
 import random
 
-# 1. PAGE CONFIG & STYLES
-st.set_page_config(page_title="Bengali Scrabble PRO", layout="centered")
+# 1. THE ENGINE: CSS Grid for a real board look
+st.set_page_config(page_title="হ য ব র ল PRO", layout="centered")
 
 st.markdown("""
     <style>
-    /* Prevent the 'barcode' stretching */
     .block-container { max-width: 550px !important; padding: 10px !important; }
     
-    /* Board Button Styling */
+    /* THE BOARD: No more 'button gaps' */
+    .board-grid {
+        display: grid;
+        grid-template-columns: repeat(11, 1fr);
+        gap: 2px;
+        background-color: #1a1a1a;
+        padding: 5px;
+        border: 4px solid #3d2b1f;
+        border-radius: 4px;
+    }
+
+    /* TILES: Real wooden board look */
+    div.stButton > button {
+        border-radius: 2px !important;
+        margin: 0 !important;
+        width: 100% !important;
+        aspect-ratio: 1/1 !important;
+    }
+
+    /* Board Tile Colors */
     div.stButton > button[key^="b_"] {
         background-color: #2c3e50 !important;
         color: #ecf0f1 !important;
+        font-size: 16px !important;
         border: 1px solid #34495e !important;
-        height: 42px !important;
-        width: 100% !important;
-        padding: 0px !important;
-        font-weight: bold !important;
     }
 
-    /* Rack/Hand Button Styling */
+    /* Rack Tile Colors */
     div.stButton > button[key^="h_"] {
-        background-color: #f1c40f !important;
-        color: #2c3e50 !important;
-        height: 55px !important;
-        width: 100% !important;
-        font-size: 18px !important;
-        border-radius: 8px !important;
-        border: 2px solid #d4ac0d !important;
+        background-color: #f3cf7a !important;
+        color: #3e2723 !important;
+        font-weight: bold !important;
+        box-shadow: 0 4px 0 #b38b4d !important;
     }
-
-    /* Selected Tile Highlight */
-    div.stButton > button.selected-tile {
-        border: 3px solid #e74c3c !important;
-        background-color: #ffeb3b !important;
-    }
+    
+    .active-p { color: #00d2ff; font-weight: bold; font-size: 20px; }
     </style>
     """, unsafe_allow_html=True)
 
-# 2. GAME DATA
+# 2. DATA & STATE
 TILES = [('কা',1), ('কি',2), ('কু',3), ('পা',2), ('মা',1), ('বা',2), ('রে',3), ('লা',2), ('না',1)]
 
-# Initialize session states
-if 'board' not in st.session_state:
-    st.session_state.board = [["" for _ in range(11)] for _ in range(11)]
-if 'hand' not in st.session_state:
-    st.session_state.hand = random.sample(TILES, 7)
-if 'sel_idx' not in st.session_state:
-    st.session_state.sel_idx = None
-if 'score' not in st.session_state:
-    st.session_state.score = 0
-if 'turn_pts' not in st.session_state:
-    st.session_state.turn_pts = 0
+for key in ['board', 'p1_score', 'p2_score', 'turn', 'sel_idx', 'hand']:
+    if 'board' not in st.session_state: st.session_state.board = [["" for _ in range(11)] for _ in range(11)]
+    if 'hand' not in st.session_state: st.session_state.hand = random.sample(TILES, 7)
+    if 'p1_score' not in st.session_state: st.session_state.p1_score, st.session_state.p2_score = 0, 0
+    if 'turn' not in st.session_state: st.session_state.turn = 1
+    if 'sel_idx' not in st.session_state: st.session_state.sel_idx = None
 
-# 3. UI HEADER
-st.title("Bengali Scrabble")
-col_score1, col_score2 = st.columns(2)
-col_score1.metric("Total Score", st.session_state.score)
-col_score2.metric("Turn Points", st.session_state.turn_pts)
+# 3. SCOREBOARD
+st.markdown("<h1 style='text-align: center;'>হ য ব র ল</h1>", unsafe_allow_html=True)
+s1, s2 = st.columns(2)
+s1.markdown(f"<div class='{'active-p' if st.session_state.turn==1 else ''}'>PLAYER 1: {st.session_state.p1_score}</div>", unsafe_allow_html=True)
+s2.markdown(f"<div class='{'active-p' if st.session_state.turn==2 else ''}'>PLAYER 2: {st.session_state.p2_score}</div>", unsafe_allow_html=True)
 
-# 4. THE BOARD (11x11 Grid)
-for r in range(11):
-    cols = st.columns(11)
-    for c in range(11):
-        tile_label = st.session_state.board[r][c]
-        if cols[c].button(tile_label if tile_label else " ", key=f"b_{r}_{c}"):
-            if st.session_state.sel_idx is not None:
-                char, pts = st.session_state.hand[st.session_state.sel_idx]
-                st.session_state.board[r][c] = char
-                st.session_state.turn_pts += pts
-                # Replace tile in hand and reset selection
-                st.session_state.hand[st.session_state.sel_idx] = random.choice(TILES)
-                st.session_state.sel_idx = None
-                st.rerun()
+# 4. THE LEGIT BOARD
+# Using a container and manual columns to simulate the grid accurately
+board_container = st.container()
+with board_container:
+    for r in range(11):
+        cols = st.columns(11)
+        for c in range(11):
+            val = st.session_state.board[r][c]
+            if cols[c].button(val if val else " ", key=f"b_{r}_{c}"):
+                if st.session_state.sel_idx is not None:
+                    char, pts = st.session_state.hand[st.session_state.sel_idx]
+                    st.session_state.board[r][c] = char
+                    if st.session_state.turn == 1: st.session_state.p1_score += pts
+                    else: st.session_state.p2_score += pts
+                    st.session_state.hand[st.session_state.sel_idx] = random.choice(TILES)
+                    st.session_state.sel_idx = None
+                    st.rerun()
 
-st.write("### Your Hand (Select a tile to place)")
-
-# 5. THE RACK (7 Tiles)
+# 5. THE RACK
+st.write("### Your Tiles")
 h_cols = st.columns(7)
 for i, (char, pts) in enumerate(st.session_state.hand):
-    # Apply a special class if this tile is selected
-    is_selected = "selected-tile" if st.session_state.sel_idx == i else ""
-    
-    if h_cols[i].button(f"{char}\n{pts}", key=f"h_{i}"):
+    if h_cols[i].button(f"{char}", key=f"h_{i}"):
         st.session_state.sel_idx = i
         st.rerun()
 
-st.divider()
-
-# 6. ACTION BUTTONS
-if st.button("🔥 SUBMIT WORD", use_container_width=True):
-    if st.session_state.turn_pts > 0:
-        st.session_state.score += st.session_state.turn_pts
-        st.session_state.turn_pts = 0
-        st.success("Word Submitted!")
-        st.rerun()
-    else:
-        st.warning("Place tiles on the board first!")
-
-if st.button("🔄 Reset Board", type="secondary"):
-    st.session_state.board = [["" for _ in range(11)] for _ in range(11)]
-    st.session_state.turn_pts = 0
+if st.button("DONE / SWITCH TURN", use_container_width=True):
+    st.session_state.turn = 2 if st.session_state.turn == 1 else 1
     st.rerun()
