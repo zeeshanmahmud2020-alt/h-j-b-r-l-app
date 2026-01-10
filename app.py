@@ -2,73 +2,57 @@ import streamlit as st
 import requests
 import random
 
-# 1. Setup
+# 1. Page Config
 st.set_page_config(page_title="H-J-B-R-L BD", layout="centered")
 
-# 2. UI Styling
-st.markdown("""
-    <style>
-    .tile-container { display: flex; justify-content: center; margin-bottom: 10px; }
-    .tile {
-        background-color: #f3cf7a; color: #3d2b1f; padding: 10px;
-        border-radius: 8px; font-weight: bold; font-size: 24px;
-        margin: 5px; border-bottom: 4px solid #b38b4d;
-        width: 50px; height: 50px; display: flex;
-        align-items: center; justify-content: center;
-    }
-    </style>
-    """, unsafe_allow_html=True)
-
-# 3. Logic & Vowels
+# 2. Memory Setup
 POOL = ['ক', 'খ', 'গ', 'ঘ', 'চ', 'ছ', 'জ', 'ত', 'দ', 'ন', 'প', 'ব', 'ম', 'র', 'ল', 'স', 'হ', 
         'অ', 'আ', 'ই', 'উ', 'এ', 'ও', 'া', 'ি', 'ী', 'ু', 'ূ', 'ে', 'ৈ', 'ো', 'ৌ']
 
 if 's1' not in st.session_state:
-    st.session_state.update({'s1':0, 's2':0, 'turn':1, 'input_val':"", 'letters':random.sample(POOL, 7)})
+    st.session_state.update({'s1':0, 's2':0, 'turn':1, 'word':"", 'letters':random.sample(POOL, 7)})
 
-# 4. Display
+# 3. Header & Scores
 st.title("𝐇-𝐉-𝐁-𝐑-𝐋 𝐁𝐃")
 st.write(f"**P1:** {st.session_state.s1} | **P2:** {st.session_state.s2} — **Player {st.session_state.turn}'s Turn**")
 
-# Show tiles visually
-tiles_html = '<div class="tile-container">' + "".join([f'<div class="tile">{l}</div>' for l in st.session_state.letters]) + '</div>'
-st.markdown(tiles_html, unsafe_allow_html=True)
-
-# Make letters clickable via buttons
-st.write("Click to type:")
+# 4. Clickable Tiles
+st.write("### Your Tiles (Click to type):")
 cols = st.columns(7)
 for i, l in enumerate(st.session_state.letters):
-    if cols[i].button(l, key=f"btn_{i}"):
-        st.session_state.input_val += l
+    if cols[i].button(l, key=f"tile_{i}"):
+        st.session_state.word += l
+        st.rerun()
 
-# 5. Validation Logic
-@st.cache_data
-def load_dict():
-    return set(requests.get("https://raw.githubusercontent.com/tahmid02016/bangla-wordlist/master/words.txt").text.split())
+# 5. Display the word being built
+st.markdown(f"## Current: `{st.session_state.word}`")
 
-words_db = load_dict()
-word_input = st.text_input("Your Word:", value=st.session_state.input_val)
+# 6. Action Buttons
+col_a, col_b, col_c = st.columns([2, 1, 1])
 
-if st.button("Submit Move", type="primary"):
-    # Check if word is in Dictionary AND letters are in Hand
-    in_dict = word_input in words_db
-    in_hand = all(word_input.count(char) <= st.session_state.letters.count(char) for char in word_input)
+if col_a.button("🚀 SUBMIT MOVE", type="primary"):
+    # Load dictionary only on click to save speed
+    dict_url = "https://raw.githubusercontent.com/tahmid02016/bangla-wordlist/master/words.txt"
+    words_db = set(requests.get(dict_url).text.split())
     
-    if in_dict and in_hand:
-        points = len(word_input)
-        if st.session_state.turn == 1: st.session_state.s1 += points
-        else: st.session_state.s2 += points
+    if st.session_state.word in words_db:
+        pts = len(st.session_state.word)
+        if st.session_state.turn == 1: st.session_state.s1 += pts
+        else: st.session_state.s2 += pts
         
-        # Reset turn
+        # Next Turn Logic
         st.session_state.turn = 2 if st.session_state.turn == 1 else 1
         st.session_state.letters = random.sample(POOL, 7)
-        st.session_state.input_val = ""
+        st.session_state.word = ""
+        st.success("Valid Word! Points added.")
         st.rerun()
-    elif not in_hand:
-        st.error("❌ Use ONLY the letters provided in your hand!")
     else:
-        st.error("❌ Not a valid Bengali word.")
+        st.error("❌ Invalid Word")
 
-if st.button("Clear Input"):
-    st.session_state.input_val = ""
+if col_b.button("🔙 Delete"):
+    st.session_state.word = st.session_state.word[:-1]
+    st.rerun()
+
+if col_c.button("🗑️ Clear"):
+    st.session_state.word = ""
     st.rerun()
