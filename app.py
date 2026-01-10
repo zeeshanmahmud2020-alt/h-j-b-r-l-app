@@ -1,47 +1,54 @@
 import streamlit as st
 import requests
 
-# 1. Title & Style
+# 1. Setup & Session State (The "Game Memory")
 st.set_page_config(page_title="H-J-B-R-L", page_icon="🎮")
-st.title("𝐇-𝐉-𝐁-𝐑-𝐋 🇧🇩")
-st.caption("The 24-Hour 'Borno-Baji' Sprint")
 
-# 2. The Brain: Load 450,000+ words from GitHub
+if 'p1_score' not in st.session_state:
+    st.session_state.p1_score = 0
+    st.session_state.p2_score = 0
+    st.session_state.turn = "Player 1"
+
+# 2. Loading the Dictionary
 @st.cache_data
 def load_dictionary():
     url = "https://raw.githubusercontent.com/tahmid02016/bangla-wordlist/master/words.txt"
-    try:
-        r = requests.get(url)
-        return set(r.text.split())
-    except:
-        return {"কাকা", "মা", "বাবা"} # Fallback if offline
+    r = requests.get(url)
+    return set(r.text.split())
 
 words_db = load_dictionary()
 
-# 3. The Numerical Assignments (Scoring)
-POINTS = {
-    'ক্ষ': 10, 'জ্ঞ': 10, 'ঞ্চ': 10, 'স্ত': 8,
-    'খ': 5, 'ঘ': 5, 'ছ': 5, 'ঝ': 8, 'ঙ': 10,
-    'অ': 1, 'আ': 1, 'ই': 1, 'উ': 1, 'এ': 1,
-    'ক': 1, 'ন': 1, 'র': 1, 'স': 1, 'ল': 1
-}
+# 3. Sidebar Scoreboard
+st.sidebar.title("🏆 Borno-Baji Score")
+st.sidebar.write(f"**Player 1:** {st.session_state.p1_score}")
+st.sidebar.write(f"**Player 2:** {st.session_state.p2_score}")
+st.sidebar.divider()
+st.sidebar.subheader(f"👉 Current Turn: {st.session_state.turn}")
 
-# 4. The Game UI
-word_input = st.text_input("Enter a word to score:", placeholder="যেমন: ক্ষণ")
+if st.sidebar.button("Reset Game"):
+    st.session_state.p1_score = 0
+    st.session_state.p2_score = 0
+    st.session_state.turn = "Player 1"
+    st.rerun()
+
+# 4. Main Game Logic
+st.title("𝐇-𝐉-𝐁-𝐑-𝐋 𝐁𝐃")
+word_input = st.text_input(f"{st.session_state.turn}, enter your word:", placeholder="যেমন: ক্ষণ")
+
+POINTS = {'ক্ষ': 10, 'জ্ঞ': 10, 'ঞ্চ': 10, 'স্ত': 8, 'খ': 5, 'ঘ': 5}
 
 if word_input:
-    # Logic: Check if word is real
     if word_input in words_db:
-        # Calculate score: sum of points or default 1
-        score = sum(POINTS.get(char, 1) for char in word_input)
-        st.success(f"✅ '{word_input}' is a valid word!")
-        st.metric(label="Scrabble Points", value=score)
+        current_score = sum(POINTS.get(char, 1) for char in word_input)
+        st.success(f"✅ Valid! Score: {current_score}")
         
-        if score > 15:
-            st.balloons()
-            st.write("💥 High score! You're a word master.")
+        if st.button(f"Submit for {st.session_state.turn}"):
+            if st.session_state.turn == "Player 1":
+                st.session_state.p1_score += current_score
+                st.session_state.turn = "Player 2"
+            else:
+                st.session_state.p2_score += current_score
+                st.session_state.turn = "Player 1"
+            st.rerun()
     else:
-        st.error(f"❌ '{word_input}' not found in the dictionary.")
-
-st.divider()
-st.info("Tip: Use complex Juktoborno like 'ক্ষ' for massive points!")
+        st.error("❌ Not in dictionary.")
