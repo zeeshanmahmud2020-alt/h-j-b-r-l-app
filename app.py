@@ -1,46 +1,65 @@
 import streamlit as st
 import random
 
-# 1. Unique "Safety" Styling
+# 1. Compact Styling (9x9 Grid)
+st.set_page_config(page_title="H-J-B-R-L PRO", layout="centered")
 st.markdown("""
     <style>
-    .board-cell { width: 40px; height: 40px; border: 1px solid #444; text-align: center; line-height: 40px; border-radius: 4px; }
-    .bonus-3w { background-color: #ff9f43; color: white; } /* Unique Orange instead of Red */
-    .bonus-2w { background-color: #54a0ff; color: white; } /* Unique Blue instead of Pink */
+    .grid-container {
+        display: grid;
+        grid-template-columns: repeat(9, 40px);
+        grid-gap: 4px;
+        justify-content: center;
+        background-color: #2c3e50;
+        padding: 10px;
+        border-radius: 10px;
+    }
+    .cell {
+        width: 40px; height: 40px;
+        background-color: #34495e;
+        border: 1px solid #444;
+        display: flex; align-items: center; justify-content: center;
+        font-weight: bold; font-size: 14px; color: white;
+        cursor: pointer;
+    }
+    .bonus-3w { background-color: #d35400 !important; } /* Orange */
+    .bonus-2l { background-color: #2980b9 !important; } /* Blue */
     </style>
     """, unsafe_allow_html=True)
 
-# 2. Logic: Syllable Bag with Numbering
-CONSONANTS = {'ক': 1, 'ম': 1, 'প': 2, 'ব': 2, 'ঘ': 8, 'ঙ': 10}
-MATRAS = {'': 0, 'া': 1, 'ি': 2, 'ু': 3, 'ে': 4, 'ো': 5}
+# 2. Syllable Data & Game State
+CONSONANTS = {'ক': 1, 'ম': 1, 'প': 2, 'ব': 2, 'ঘ': 8, 'হ': 4}
+MATRAS = {'': 0, 'া': 1, 'ি': 2, 'ু': 3}
 
-@st.cache_resource
-def get_safe_bag():
-    bag = []
-    for c, cp in CONSONANTS.items():
-        for m, mp in MATRAS.items():
-            bag.append((c + m, cp + mp))
-    return bag
+if 'board' not in st.session_state:
+    st.session_state.board = [["" for _ in range(9)] for _ in range(9)]
+    st.session_state.hand = [f"{random.choice(list(CONSONANTS))}{random.choice(list(MATRAS))}" for _ in range(7)]
+    st.session_state.selected_tile = None
 
-if 'hand' not in st.session_state:
-    st.session_state.hand = random.sample(get_safe_bag(), 7)
+# 3. Game UI
+st.title("𝐇-𝐉-𝐁-𝐑-𝐋 𝐁𝐃")
 
-# 3. The 13x13 Board (Avoiding the 15x15 Scrabble Trademark)
-st.title("𝐇-𝐉-𝐁-𝐑-𝐋 𝐏𝐑𝐎")
-st.write("### Game Board (13x13)")
+# The Board (Compact 9x9)
+st.write("### The Board")
+# Streamlit buttons in a loop to act as the board
+for r in range(9):
+    cols = st.columns(9)
+    for c in range(9):
+        label = st.session_state.board[r][c] if st.session_state.board[r][c] != "" else " "
+        if cols[c].button(label, key=f"b_{r}_{c}"):
+            if st.session_state.selected_tile:
+                st.session_state.board[r][c] = st.session_state.selected_tile
+                st.session_state.hand.remove(st.session_state.selected_tile)
+                st.session_state.selected_tile = None
+                st.rerun()
 
-for r in range(13):
-    cols = st.columns(13)
-    for c in range(13):
-        # Unique Bonus Logic (not the Scrabble pattern)
-        if (r + c) % 5 == 0:
-            cols[c].markdown("<div class='board-cell bonus-3w'>3x</div>", unsafe_allow_html=True)
-        else:
-            cols[c].markdown("<div class='board-cell'> </div>", unsafe_allow_html=True)
-
-# 4. The Player Holder
+# 4. The Player's Hand (Compact & Clickable)
 st.write("---")
-st.write("### Your Tiles")
+st.write(f"### Your Hand (Selected: **{st.session_state.selected_tile}**)")
 h_cols = st.columns(7)
-for i, (tile, pts) in enumerate(st.session_state.hand):
-    h_cols[i].button(f"{tile}\n{pts}", key=f"h_{i}")
+for i, tile in enumerate(st.session_state.hand):
+    if h_cols[i].button(tile, key=f"h_{i}"):
+        st.session_state.selected_tile = tile
+        st.rerun()
+
+st.button("Clear Board", on_click=lambda: st.session_state.clear())
