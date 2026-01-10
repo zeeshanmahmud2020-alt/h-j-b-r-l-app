@@ -91,4 +91,15 @@ st.write(f"Drafting: **{word}**")
 
 if st.button("🔥 SUBMIT WORD", use_container_width=True, type="primary"):
     if word in WORDS_DB:
-        st.session_state.scores[st.session_state
+        st.session_state.scores[st.session_state.turn] += len(word)
+        st.session_state.turn = "P2" if st.session_state.turn == "P1" else "P1"
+        st.session_state.turn_data = [] # Lock in
+        st.toast("Valid Word!")
+        st.rerun()
+    else:
+        # SELF-HEALING: Rewire board
+        for r, c, char in st.session_state.turn_data:
+            st.session_state.board[r][c] = ""
+        st.session_state.turn_data = []
+        st.error(f"'{word}' is invalid. Move wiped.")
+        st.rerun()
