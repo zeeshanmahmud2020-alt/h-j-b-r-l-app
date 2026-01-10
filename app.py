@@ -2,40 +2,48 @@ import streamlit as st
 import requests
 import random
 
-# 1. Clean UI Setup
+# 1. Professional Page Setup
 st.set_page_config(page_title="H-J-B-R-L", layout="centered")
 
-# Custom CSS for the "Screenshot Look"
+# 2. Custom CSS for Horizontal Clickable Tiles
 st.markdown("""
     <style>
-    .stButton>button { width: 100%; height: 60px; font-size: 24px; border-radius: 10px; margin-bottom: 10px; }
-    .score-text { font-size: 30px; font-weight: bold; text-align: center; color: #f3cf7a; }
+    .tile-row { display: flex; justify-content: center; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
+    div.stButton > button { 
+        background-color: #f3cf7a !important; color: #3d2b1f !important; 
+        font-weight: bold !important; font-size: 22px !important;
+        border-radius: 8px !important; border-bottom: 4px solid #b38b4d !important;
+        width: 60px !important; height: 60px !important; padding: 0px !important;
+    }
+    .main-word { font-size: 50px; text-align: center; color: white; margin-bottom: 10px; min-height: 60px; }
     </style>
     """, unsafe_allow_html=True)
 
-# 2. Memory
-POOL = ['ক', 'খ', 'গ', 'ঘ', 'চ', 'ছ', 'জ', 'ত', 'দ', 'ন', 'প', 'ব', 'ম', 'র', 'ল', 'স', 'হ', 'া', 'ি', 'ু', 'ে']
+# 3. Game State
+POOL = ['ক', 'খ', 'গ', 'ঘ', 'চ', 'ছ', 'জ', 'ত', 'দ', 'ন', 'প', 'ব', 'ম', 'র', 'ল', 'স', 'হ', 'া', 'ি', 'ু', 'ে', 'ো']
 if 's1' not in st.session_state:
     st.session_state.update({'s1':0, 's2':0, 'turn':1, 'word':"", 'letters':random.sample(POOL, 7)})
 
-# 3. Header & Score (Symmetric)
-st.markdown(f"<div class='score-text'>P1: {st.session_state.s1} | P2: {st.session_state.s2}</div>", unsafe_allow_html=True)
-st.write(f"### Player {st.session_state.turn}'s Turn")
+# 4. Score & Turn
+st.markdown(f"### P1: {st.session_state.s1} | P2: {st.session_state.s2}")
+st.write(f"👉 **Player {st.session_state.turn}'s Turn**")
 
-# 4. The Word Display (Big and Clear)
-st.title(f"👉 {st.session_state.word}")
+# 5. The Active Word
+st.markdown(f"<div class='main-word'>{st.session_state.word}</div>", unsafe_allow_html=True)
 
-# 5. The Letter Buttons (One per row for mobile stability)
+# 6. Horizontal Tile Hand
 st.write("---")
+cols = st.columns(7)
 for i, l in enumerate(st.session_state.letters):
-    if st.button(l, key=f"L_{i}"):
+    if cols[i].button(l, key=f"t_{i}"):
         st.session_state.word += l
         st.rerun()
 
-# 6. Action Buttons
+# 7. Action Controls
 st.write("---")
-if st.button("🚀 SUBMIT WORD", type="primary"):
-    # Check dictionary
+c1, c2 = st.columns([3, 1])
+
+if c1.button("🔥 SUBMIT MOVE", type="primary"):
     r = requests.get("https://raw.githubusercontent.com/tahmid02016/bangla-wordlist/master/words.txt")
     if st.session_state.word in set(r.text.split()):
         pts = len(st.session_state.word)
@@ -46,8 +54,8 @@ if st.button("🚀 SUBMIT WORD", type="primary"):
         st.session_state.word = ""
         st.rerun()
     else:
-        st.error("Invalid word!")
+        st.error("Invalid Bengali word!")
 
-if st.button("🗑️ Clear"):
-    st.session_state.word = ""
+if c2.button("🔙 Del"):
+    st.session_state.word = st.session_state.word[:-1]
     st.rerun()
