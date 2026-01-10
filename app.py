@@ -11,11 +11,11 @@ def load_dict():
         r = requests.get(url, timeout=5)
         return set(word.strip() for word in r.text.split())
     except:
-        return {"কাকা", "বাবা", "মামা"}
+        return {"কাকা", "বাবা", "মামা", "বাঘ", "নাম", "গান"}
 
 WORDS_DB = load_dict()
 
-# CSS for a professional, non-stretching board
+# CSS: Hard-locked grid to prevent "puke layout"
 st.markdown("""
     <style>
     div.stButton > button[key^="b_"] {
@@ -31,28 +31,35 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# State Management
-if 's1' not in st.session_state: 
-    st.session_state.update({'s1':0, 's2':0, 'turn':1, 'sel_idx':None, 'turn_moves':[]})
-if 'board' not in st.session_state: 
-    st.session_state.board = [["" for _ in range(11)] for _ in range(11)]
-if 'hand' not in st.session_state:
-    POOL = [('না',1), ('রা',2), ('কু',2), ('মা',1), ('বা',1), ('কি',2)]
-    st.session_state.hand = random.sample(POOL, 7)
+# ROBUST INITIALIZATION (Fixes ValueError)
+# Expanded POOL to ensure population > sample size
+POOL = [
+    ('কা',1), ('কি',2), ('কু',2), ('কে',3), ('পা',1), ('পি',2), ('পু',2), 
+    ('মা',1), ('মি',2), ('মু',2), ('বা',1), ('বি',2), ('বু',2), 
+    ('রা',2), ('রে',2), ('না',1), ('নি',2), ('নু',2), ('গা',2), ('নো',3)
+]
 
-# Sidebar for Executive Oversight
+if 'board' not in st.session_state: st.session_state.board = [["" for _ in range(11)] for _ in range(11)]
+if 's1' not in st.session_state: st.session_state.s1 = 0
+if 's2' not in st.session_state: st.session_state.s2 = 0
+if 'turn' not in st.session_state: st.session_state.turn = 1
+if 'hand' not in st.session_state: st.session_state.hand = random.sample(POOL, 7)
+if 'sel_idx' not in st.session_state: st.session_state.sel_idx = None
+if 'turn_buffer' not in st.session_state: st.session_state.turn_buffer = []
+
+# SIDEBAR SCOREBOARD
 with st.sidebar:
-    st.header("📊 Board Audit")
-    st.metric("Player 1 Score", st.session_state.s1)
-    st.metric("Player 2 Score", st.session_state.s2)
-    st.write(f"👉 Active: **Player {st.session_state.turn}**")
-    if st.button("🔄 System Reset"):
+    st.header("📊 Scoreboard")
+    st.metric("Player 1", st.session_state.s1)
+    st.metric("Player 2", st.session_state.s2)
+    st.write(f"👉 Turn: **Player {st.session_state.turn}**")
+    if st.button("🔄 Reset Game"):
         st.session_state.clear()
         st.rerun()
 
 st.markdown("<h1 style='text-align:center; color:#f1c40f;'>হ য ব র ল</h1>", unsafe_allow_html=True)
 
-# Grid Rendering
+# THE BOARD
 for r in range(11):
     cols = st.columns(11)
     for c in range(11):
@@ -61,12 +68,13 @@ for r in range(11):
             if st.session_state.sel_idx is not None:
                 char, pts = st.session_state.hand[st.session_state.sel_idx]
                 st.session_state.board[r][c] = char
-                st.session_state.turn_moves.append({'pos':(r,c), 'char':char, 'pts':pts})
+                # Add to buffer (NOT score)
+                st.session_state.turn_buffer.append({'pos':(r,c), 'char':char, 'pts':pts})
                 st.session_state.hand[st.session_state.sel_idx] = random.choice(POOL)
                 st.session_state.sel_idx = None
                 st.rerun()
 
-# Unicode Subscripts for Clean UI
+# THE RACK
 st.markdown("<div class='rack-container'>", unsafe_allow_html=True)
 h_cols = st.columns(7)
 SUBS = {"1":"₁", "2":"₂", "3":"₃"}
@@ -75,25 +83,25 @@ for i, (char, pts) in enumerate(st.session_state.hand):
         st.session_state.sel_idx = i
         st.rerun()
 
-# THE VALIDATION ENGINE
-word_attempt = "".join([m['char'] for m in st.session_state.turn_moves])
-st.write(f"Current String: **{word_attempt}**")
+# THE GATEKEEPER (The "Stress Test" Fix)
+word = "".join([m['char'] for m in st.session_state.turn_buffer])
+st.write(f"Attempt: **{word if word else '...'}**")
 
 if st.button("🔥 SUBMIT WORD", use_container_width=True, type="primary"):
-    # THE AUDIT: Is the string in the dictionary?
-    if word_attempt in WORDS_DB and len(word_attempt) > 1:
-        points = sum([m['pts'] for m in st.session_state.turn_moves])
-        if st.session_state.turn == 1: st.session_state.s1 += points
-        else: st.session_state.s2 += points
+    if word in WORDS_DB and len(word) > 1:
+        # Dictionary approved: awarding points
+        pts_earned = sum([m['pts'] for m in st.session_state.turn_buffer])
+        if st.session_state.turn == 1: st.session_state.s1 += pts_earned
+        else: st.session_state.s2 += pts_earned
         st.session_state.turn = 2 if st.session_state.turn == 1 else 1
-        st.session_state.turn_moves = []
-        st.success("Transaction Approved!")
+        st.session_state.turn_buffer = []
+        st.success(f"Accepted! +{pts_earned}")
         st.rerun()
     else:
-        # REJECTION: Reverse the moves and award 0 points
-        for m in st.session_state.turn_moves:
+        # Dictionary rejected: Wiping board
+        for m in st.session_state.turn_buffer:
             r, c = m['pos']
             st.session_state.board[r][c] = ""
-        st.session_state.turn_moves = []
-        st.error(f"'{word_attempt}' is not a valid word. Board reverted.")
+        st.session_state.turn_buffer = []
+        st.error(f"'{word}' rejected. No points.")
         st.rerun()
