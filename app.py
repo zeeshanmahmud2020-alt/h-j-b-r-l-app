@@ -3,73 +3,91 @@ import random
 
 st.set_page_config(page_title="H-J-B-R-L PRO", layout="centered")
 
-# 1. THE SOUL: High-End UI Styling
+# 1. THE SOUL: Authentic Game CSS
 st.markdown("""
     <style>
-    /* The Board Grid */
-    .stButton > button { border-radius: 4px; border: none; font-weight: bold; }
-    
-    /* Board Cells */
-    div.stButton > button[key^="b_"] {
-        background-color: #2e3d49 !important; color: #5d6d7e !important;
-        height: 42px !important; width: 42px !important; margin: 1px !important;
+    /* 11x11 Compact Board */
+    .board-grid {
+        display: grid;
+        grid-template-columns: repeat(9, 38px);
+        grid-gap: 2px;
+        justify-content: center;
+        background-color: #1a252f;
+        padding: 10px;
+        border-radius: 5px;
     }
-    
-    /* The Rack (The Holder) */
-    .rack-container {
-        background: linear-gradient(to bottom, #8b5a2b, #5d3a1a);
-        padding: 15px; border-radius: 10px; border-bottom: 6px solid #3d2611;
-        display: flex; justify-content: center; gap: 8px; margin-top: 20px;
+    /* The Rack (Connected Wooden Holder) */
+    .rack-box {
+        background: #5d3a1a;
+        padding: 10px 20px;
+        border-radius: 5px;
+        border-bottom: 8px solid #3d2611;
+        display: flex;
+        justify-content: center;
+        gap: 0px; /* Connected tiles */
+        margin-top: 30px;
     }
-    
-    /* The Wooden Tiles */
+    /* Super-Script Logic via Button Styling */
+    div.stButton > button {
+        border-radius: 2px !important;
+        font-family: 'Courier New', Courier, monospace;
+    }
+    /* Wood Tile Style */
     div.stButton > button[key^="h_"] {
-        background-color: #f3cf7a !important; color: #3d2b1f !important;
-        height: 55px !important; width: 50px !important;
-        font-size: 20px !important; border-bottom: 4px solid #b38b4d !important;
-        box-shadow: 2px 2px 5px rgba(0,0,0,0.4) !important;
+        background-color: #f3cf7a !important;
+        color: #3d2b1f !important;
+        width: 45px !important; height: 50px !important;
+        border: 1px solid #b38b4d !important;
+        font-size: 18px !important;
+        line-height: 1 !important;
     }
-    
-    /* Selected Tile Highlight */
-    div.stButton > button[key^="h_"]:focus { border: 3px solid #ffffff !important; }
+    /* Board Cell Style */
+    div.stButton > button[key^="b_"] {
+        background-color: #2c3e50 !important;
+        color: #ecf0f1 !important;
+        width: 38px !important; height: 38px !important;
+        font-size: 14px !important;
+    }
     </style>
     """, unsafe_allow_html=True)
 
-# 2. Syllabic Matrix Logic
-CONS = ['ক', 'খ', 'গ', 'চ', 'জ', 'ত', 'দ', 'ন', 'প', 'ব', 'ম', 'র', 'ল', 'স', 'হ']
-MATRAS = ['', 'া', 'ি', 'ু', 'ে', 'ো']
+# 2. Logic: Syllable Matrix with Points
+# Format: (Syllable, Pts)
+TILES = [('কা',1), ('কি',2), ('কু',3), ('কে',4), ('কো',5), ('পা',2), ('পি',3), ('মা',1), ('মি',2), ('বা',2)]
 
 if 'board' not in st.session_state:
-    st.session_state.board = [["" for _ in range(11)] for _ in range(11)]
-    st.session_state.hand = [random.choice(CONS) + random.choice(MATRAS) for _ in range(7)]
+    st.session_state.board = [["" for _ in range(9)] for _ in range(9)]
+    st.session_state.hand = random.sample(TILES, 7)
     st.session_state.selected = None
 
-# 3. Game Header
-st.markdown("<h1 style='text-align: center; color: #f3cf7a;'>𝐇-𝐉-𝐁-𝐑-𝐋 𝐏𝐑𝐎</h1>", unsafe_allow_html=True)
-st.write(f"**Selected:** {st.session_state.selected if st.session_state.selected else 'Click a tile from the rack'}")
+# 3. Game Interface
+st.markdown("<h2 style='text-align: center;'>𝐇-𝐉-𝐁-𝐑-𝐋 𝐏𝐑𝐎</h2>", unsafe_allow_html=True)
 
-# 4. The 11x11 Board
-for r in range(11):
-    cols = st.columns(11)
-    for c in range(11):
+# 4. The 9x9 Board (Tight Grid)
+for r in range(9):
+    cols = st.columns(9)
+    for c in range(9):
         val = st.session_state.board[r][c]
         if cols[c].button(val if val else "·", key=f"b_{r}_{c}"):
             if st.session_state.selected:
-                st.session_state.board[r][c] = st.session_state.selected
+                st.session_state.board[r][c] = st.session_state.selected[0]
                 st.session_state.hand.remove(st.session_state.selected)
-                st.session_state.hand.append(random.choice(CONS) + random.choice(MATRAS))
+                st.session_state.hand.append(random.choice(TILES))
                 st.session_state.selected = None
                 st.rerun()
 
-# 5. THE HOLDER (Wooden Rack)
-st.markdown("<div class='rack-container'>", unsafe_allow_html=True)
-st.write("### 🪵 Your Letter Rack")
-h_cols = st.columns(7)
-for i, tile in enumerate(st.session_state.hand):
-    if h_cols[i].button(tile, key=f"h_{i}"):
-        st.session_state.selected = tile
+# 5. THE RACK (The Holder)
+st.write("---")
+st.markdown("<div style='text-align:center; font-weight:bold;'>THE HOLDER</div>", unsafe_allow_html=True)
+h_cols = st.columns([1,1,1,1,1,1,1])
+for i, (char, pts) in enumerate(st.session_state.hand):
+    # Using Unicode superscript for the points
+    superscripts = {"1":"¹", "2":"²", "3":"³", "4":"⁴", "5":"⁵", "6":"⁶", "7":"⁷", "8":"⁸", "9":"⁹", "0":"⁰"}
+    pt_str = "".join(superscripts.get(d, d) for d in str(pts))
+    
+    if h_cols[i].button(f"{char}{pt_str}", key=f"h_{i}"):
+        st.session_state.selected = (char, pts)
         st.rerun()
 
-if st.sidebar.button("Reset Game"):
-    st.session_state.clear()
-    st.rerun()
+if st.session_state.selected:
+    st.info(f"Picked: {st.session_state.selected[0]}. Now click a spot on the board.")
