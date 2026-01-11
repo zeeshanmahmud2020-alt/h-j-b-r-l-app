@@ -42,47 +42,66 @@ lexicon = load_lexicon()
 # --- 3. BRAIN ---
 def handle_submission():
     word = st.session_state.word_box_input
-    if not word: return
+    if not word:
+        st.warning("⚠️ Please type a word first!")
+        return
+    
     target = unicodedata.normalize('NFC', word.strip())
     
-    if target in lexicon:
-        tiles_to_place = re.findall(r'[\u0980-\u09ff][\u09be-\u09cc\u09cd\u0981\u0982\u0983]*', target)
+    # 1. DICTIONARY CHECK
+    if target not in lexicon:
+        st.error(f"❌ '{target}' is not a valid Bengali word!")
+        return
+
+    # 2. BREAK INTO TILES
+    tiles_to_place = re.findall(r'[\u0980-\u09ff][\u09be-\u09cc\u09cd\u0981\u0982\u0983]*', target)
+    
+    # 3. INVENTORY CHECK (Do you have the tiles?)
+    rack = st.session_state.p1_rack.copy() if st.session_state.turn == "Player 1" else st.session_state.p2_rack.copy()
+    for t in tiles_to_place:
+        if t in rack:
+            rack.remove(t)
+        else:
+            st.error(f"❌ You don't have the tile '{t}' in your hand!")
+            return
+
+    # 4. PLACEMENT & COLLISION CHECK
+    r_idx = ROW_LABELS.index(st.session_state.row_sel)
+    c_idx = int(st.session_state.col_sel) - 1
+    
+    for i, t in enumerate(tiles_to_place):
+        curr_r = r_idx + (i if st.session_state.dir_val == "Vertical" else 0)
+        curr_c = c_idx + (i if st.session_state.dir_val == "Horizontal" else 0)
         
-        # Inventory Check
-        rack = st.session_state.p1_rack.copy() if st.session_state.turn == "Player 1" else st.session_state.p2_rack.copy()
-        for t in tiles_to_place:
-            if t in rack: rack.remove(t)
-            else:
-                st.error(f"❌ Missing tile: {t}"); return
-
-        # Coordinate Logic
-        r_idx = ROW_LABELS.index(st.session_state.row_sel)
-        c_idx = int(st.session_state.col_sel) - 1
+        if curr_r >= 9 or curr_c >= 9:
+            st.error("❌ Word goes off the board edges!")
+            return
         
-        # Collision Check
-        for i, t in enumerate(tiles_to_place):
-            curr_r = r_idx + (i if st.session_state.dir_val == "Vertical" else 0)
-            curr_c = c_idx + (i if st.session_state.dir_val == "Horizontal" else 0)
-            if curr_r >= 9 or curr_c >= 9: st.error("❌ Off board!"); return
-            if st.session_state.board[curr_r][curr_c] not in ["", t]: st.error("❌ Collision!"); return
+        existing = st.session_state.board[curr_r][curr_c]
+        if existing != "" and existing != t:
+            st.error(f"❌ Collision at {ROW_LABELS[curr_r]}{curr_c+1}!")
+            return
 
-        # Place & Score
-        score = sum(sum(GRAPHEME_VALUES.get(char, 0) for char in g) for g in tiles_to_place)
-        for i, t in enumerate(tiles_to_place):
-            curr_r = r_idx + (i if st.session_state.dir_val == "Vertical" else 0)
-            curr_c = c_idx + (i if st.session_state.dir_val == "Horizontal" else 0)
-            st.session_state.board[curr_r][curr_c] = t
+    # 5. SUCCESS: COMMIT MOVE
+    score = sum(sum(GRAPHEME_VALUES.get(char, 0) for char in g) for g in tiles_to_place)
+    for i, t in enumerate(tiles_to_place):
+        curr_r = r_idx + (i if st.session_state.dir_val == "Vertical" else 0)
+        curr_c = c_idx + (i if st.session_state.dir_val == "Horizontal" else 0)
+        st.session_state.board[curr_r][curr_c] = t
 
-        # Update Rack
-        real_rack = st.session_state.p1_rack if st.session_state.turn == "Player 1" else st.session_state.p2_rack
-        for t in tiles_to_place: real_rack.remove(t)
-        while len(real_rack) < 7 and st.session_state.bag: real_rack.append(st.session_state.bag.pop())
+    # Refill Hand
+    real_rack = st.session_state.p1_rack if st.session_state.turn == "Player 1" else st.session_state.p2_rack
+    for t in tiles_to_place: real_rack.remove(t)
+    while len(real_rack) < 7 and st.session_state.bag:
+        real_rack.append(st.session_state.bag.pop())
 
-        if st.session_state.turn == "Player 1": st.session_state.p1_score += score
-        else: st.session_state.p2_score += score
-        st.session_state.turn = "Player 2" if st.session_state.turn == "Player 1" else "Player 1"
-        st.session_state.word_box_input = ""
-    else: st.error("❌ Word not in dictionary!")
+    # Update Score/Turn
+    if st.session_state.turn == "Player 1": st.session_state.p1_score += score
+    else: st.session_state.p2_score += score
+    
+    st.session_state.turn = "Player 2" if st.session_state.turn == "Player 1" else "Player 1"
+    st.session_state.word_box_input = ""
+    st.success(f"✅ Points Added: {score}")
 
 # --- 4. DISPLAY ---
 st.sidebar.title("🏆 H.J.B.R.L Arena")
