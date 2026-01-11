@@ -41,7 +41,8 @@ for r in range(9):
 
 # 4. THE BRAIN: VALIDATION & PLACEMENT
 st.divider()
-user_input = st.text_input("Type your Bengali word:")
+# Adding a 'key' allows us to clear this box later
+user_input = st.text_input("Type your Bengali word:", key="word_box")
 c1, c2, c3 = st.columns(3)
 r_start = c1.number_input("Row", 0, 8)
 c_start = c2.number_input("Col", 0, 8)
@@ -72,6 +73,9 @@ if st.button("Confirm Move & End Turn"):
                     break
 
             if can_place:
+                # This clears the text box so the same word can't be 're-submitted'
+st.session_state["word_box"] = "" 
+st.rerun()
                 # PLACE TILES
                 for i, t in enumerate(tiles):
                     curr_r = r_start + (i if orient == "Vertical" else 0)
