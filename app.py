@@ -96,3 +96,5 @@ if st.button("Confirm Move & End Turn"):
 if st.button("Reset Arena"):
     st.session_state.clear()
     st.rerun()
+# Insert this after a successful move to clear the input field
+st.session_state["word_input_key"] = ""
