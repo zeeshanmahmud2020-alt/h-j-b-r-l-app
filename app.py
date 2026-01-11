@@ -1,57 +1,32 @@
 import streamlit as st
-import unicodedata
-import requests
-import re
 
-# --- ARCHITECTURAL STATE (Memory) ---
-if 'board' not in st.session_state:
+# --- INITIALIZE GAME STATE ---
+if 'player1_score' not in st.session_state:
+    st.session_state.player1_score = 0
+if 'player2_score' not in st.session_state:
+    st.session_state.player2_score = 0
+if 'current_turn' not in st.session_state:
+    st.session_state.current_turn = "Player 1"
+
+# --- SCOREBOARD UI ---
+st.sidebar.title("🏆 Scoreboard")
+st.sidebar.metric("Player 1", f"{st.session_state.player1_score} pts")
+st.sidebar.metric("Player 2", f"{st.session_state.player2_score} pts")
+st.sidebar.write(f"**Current Turn:** {st.session_state.current_turn}")
+
+# --- THE SWAP & SUBMIT LOGIC ---
+if st.button("End Turn & Validate Word"):
+    # 1. Logic to read the board and validate word goes here
+    # 2. Add points based on the word found
+    # 3. Swap players
+    if st.session_state.current_turn == "Player 1":
+        st.session_state.current_turn = "Player 2"
+    else:
+        st.session_state.current_turn = "Player 1"
+    st.rerun()
+
+if st.button("Reset Game"):
     st.session_state.board = [["" for _ in range(9)] for _ in range(9)]
-if 'total_score' not in st.session_state:
-    st.session_state.total_score = 0
-
-# --- THE UNIFIED SYSTEM ---
-def get_akshara_tiles(word):
-    # The atomic unit of Bengali Scrabble
-    cluster_pattern = r'[\u0985-\u09b9\u09ce\u09dc-\u09df][\u09be-\u09cc\u09cd\u0981\u0982\u0983]*|[\u0985-\u0994]'
-    return re.findall(cluster_pattern, word)
-
-# --- THE BOARD UI ---
-st.title("🏛️ Bengali Scrabble Arena (9x9)")
-
-# Render Grid
-for r in range(9):
-    cols = st.columns(9)
-    for c in range(9):
-        tile_val = st.session_state.board[r][c]
-        # Multiplier Colors: (4,4) is Center Star
-        color = "#FFD700" if (r, c) == (4, 4) else "#f0f2f6"
-        cols[c].markdown(
-            f"<div style='height:40px; border:1px solid #333; background:{color}; "
-            f"text-align:center; line-height:40px; color:black; font-weight:bold;'>"
-            f"{tile_val}</div>", unsafe_allow_html=True
-        )
-
-# --- THE CONTROLLER ---
-st.divider()
-word_input = st.text_input("Enter Validated Word:")
-if word_input:
-    # (Assuming validation logic from Phase 1 is above this)
-    tiles = get_akshara_tiles(word_input)
-    st.write(f"Tiles to place: {tiles}")
-    
-    col_row, col_col, col_dir = st.columns(3)
-    start_r = col_row.number_input("Start Row", 0, 8, key="row")
-    start_c = col_col.number_input("Start Col", 0, 8, key="col")
-    direction = col_dir.selectbox("Direction", ["Horizontal", "Vertical"])
-
-    if st.button("Confirm Placement"):
-        # The Machine projects tiles onto the 2D Array
-        for i, tile in enumerate(tiles):
-            r = start_r + (i if direction == "Vertical" else 0)
-            c = start_c + (i if direction == "Horizontal" else 0)
-            
-            if r < 9 and c < 9:
-                st.session_state.board[r][c] = tile
-        
-        st.success("Placement Successful.")
-        st.rerun()
+    st.session_state.player1_score = 0
+    st.session_state.player2_score = 0
+    st.rerun()
