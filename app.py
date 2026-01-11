@@ -1,41 +1,39 @@
 import streamlit as st
-import unicodedata
 import requests
 import re
+import unicodedata
 
-# --- THE POETIC SANITIZER ---
-# We reduce the complexity of the world to its purest essence (NFC Normalization)
-def canonical_form(text):
-    if not text: return ""
-    # Standardize Unicode: Unifies different ways of encoding the same glyph
-    text = unicodedata.normalize('NFC', text.strip())
-    # Remove 'ZWN' characters which act as invisible ghosts in the machine
-    text = re.sub(r'[\u200d\u200c\ufeff]', '', text)
-    return text
-
+# 1. THE INGESTION ENGINE (The "Consultant's Fix")
 @st.cache_data
-def load_and_purify():
+def ingest_lexicon():
     url = "https://raw.githubusercontent.com/MinhasKamal/BengaliDictionary/master/BengaliDictionary_17.txt"
+    # We create a 'Set' for O(1) complexity—the gold standard for Scrabble
+    lexicon = set()
     try:
         response = requests.get(url)
-        # We transform the raw list into a 'Set' of pure forms for O(1) speed
-        return {canonical_form(line.split()[0]) for line in response.text.splitlines() if line}
-    except:
+        for line in response.text.splitlines():
+            # EXTRACT: Take only the first Bengali word before any brackets/spaces
+            match = re.search(r'^([^\s\[\(\\]+)', line.strip())
+            if match:
+                word = match.group(1)
+                # NORMALIZE: Ensure "দাগ" is the same in memory as on screen
+                clean_word = unicodedata.normalize('NFC', word)
+                lexicon.add(clean_word)
+        return lexicon
+    except Exception:
         return set()
 
-# --- THE AESTHETIC INTERFACE ---
-st.markdown("<h1 style='text-align: center; color: #4A90E2;'>✧ The Bengali Lexicon ✧</h1>", unsafe_allow_html=True)
+# 2. THE VALIDATION LOGIC
+st.title("🏛️ Enterprise Scrabble Validator")
+valid_words = ingest_lexicon()
 
-dictionary = load_and_purify()
+input_word = st.text_input("Submit Token:")
 
-# We design for the human: Large, centered, and inviting
-word = st.text_input("Speak a word into the void:", placeholder="e.g., দাগ")
-
-if word:
-    pure_word = canonical_form(word)
+if input_word:
+    # Match the input's encoding to the lexicon's encoding
+    processed_input = unicodedata.normalize('NFC', input_word.strip())
     
-    if pure_word in dictionary:
-        st.markdown(f"<div style='padding:20px; border-radius:10px; background-color:#d4edda; color:#155724; text-align:center;'><b>{word}</b> is a masterpiece of the language. (VALID)</div>", unsafe_allow_html=True)
-        st.balloons()
+    if processed_input in valid_words:
+        st.success(f"TOKEN VALID: {processed_input}")
     else:
-        st.markdown(f"<div style='padding:20px; border-radius:10px; background-color:#f8d7da; color:#721c24; text-align:center;'><b>{word}</b> exists outside the known scrolls. (INVALID)</div>", unsafe_allow_html=True)
+        st.error(f"TOKEN INVALID: {processed_input}")
