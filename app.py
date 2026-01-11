@@ -45,10 +45,4 @@ else:
             st.error(f"### ❌ INVALID WORD: **{word_input}**")
             st.warning("This word was not found in the dictionary.")
 
----
-### Why this is a "Scrabble App" now:
-* **Set Lookup:** I changed the list to a `set()`. In a search bar, you wait for a loop; in a Scrabble app, the check is instant, which is better for fast gameplay.
-* **Visual Feedback:** Instead of showing "Search Results," it uses `st.success` and `st.error` with big headers to clearly state if a move is legal.
-* **Balloons:** Added a little celebration for valid words!
 
-Would you like me to add a **Scrabble Point Calculator** so it also shows the score for the word based on letter rarity?
