@@ -1,48 +1,41 @@
 import streamlit as st
 import unicodedata
 import requests
+import re
 
-# 1. ADVANCED NORMALIZER (Required for Bangla script matching)
-def deep_rectify_bangla(text):
+# --- THE POETIC SANITIZER ---
+# We reduce the complexity of the world to its purest essence (NFC Normalization)
+def canonical_form(text):
     if not text: return ""
-    text = unicodedata.normalize('NFC', text)
-    invisible_chars = ['\u200d', '\u200c', '\ufeff', '\u200e', '\u200f']
-    for char in invisible_chars:
-        text = text.replace(char, '')
-    return text.strip()
+    # Standardize Unicode: Unifies different ways of encoding the same glyph
+    text = unicodedata.normalize('NFC', text.strip())
+    # Remove 'ZWN' characters which act as invisible ghosts in the machine
+    text = re.sub(r'[\u200d\u200c\ufeff]', '', text)
+    return text
 
-# 2. DATA LOADING (Optimized with Caching)
 @st.cache_data
-def load_scrabble_dictionary():
+def load_and_purify():
     url = "https://raw.githubusercontent.com/MinhasKamal/BengaliDictionary/master/BengaliDictionary_17.txt"
     try:
         response = requests.get(url)
-        # Convert the list into a 'set' for lightning-fast Scrabble lookups
-        raw_words = response.text.splitlines()
-        return {deep_rectify_bangla(w) for w in raw_words if w.strip()}
+        # We transform the raw list into a 'Set' of pure forms for O(1) speed
+        return {canonical_form(line.split()[0]) for line in response.text.splitlines() if line}
     except:
         return set()
 
-# 3. SCRABBLE UI
-st.set_page_config(page_title="Bangla Scrabble Checker", page_icon="📝")
-st.title("📝 Bangla Scrabble Word Validator")
+# --- THE AESTHETIC INTERFACE ---
+st.markdown("<h1 style='text-align: center; color: #4A90E2;'>✧ The Bengali Lexicon ✧</h1>", unsafe_allow_html=True)
 
-scrabble_dict = load_scrabble_dictionary()
+dictionary = load_and_purify()
 
-if not scrabble_dict:
-    st.error("Could not load dictionary. Please check your internet connection.")
-else:
-    word_input = st.text_input("Enter word to validate:", placeholder="যেমন: অমর", help="Type a word to see if it's in the Scrabble dictionary.")
+# We design for the human: Large, centered, and inviting
+word = st.text_input("Speak a word into the void:", placeholder="e.g., দাগ")
 
-    if word_input:
-        processed_input = deep_rectify_bangla(word_input)
-        
-        if processed_input in scrabble_dict:
-            st.balloons()
-            st.success(f"### ✅ VALID WORD: **{word_input}**")
-            st.info("This word is in the official list and can be used in your game.")
-        else:
-            st.error(f"### ❌ INVALID WORD: **{word_input}**")
-            st.warning("This word was not found in the dictionary.")
-
-
+if word:
+    pure_word = canonical_form(word)
+    
+    if pure_word in dictionary:
+        st.markdown(f"<div style='padding:20px; border-radius:10px; background-color:#d4edda; color:#155724; text-align:center;'><b>{word}</b> is a masterpiece of the language. (VALID)</div>", unsafe_allow_html=True)
+        st.balloons()
+    else:
+        st.markdown(f"<div style='padding:20px; border-radius:10px; background-color:#f8d7da; color:#721c24; text-align:center;'><b>{word}</b> exists outside the known scrolls. (INVALID)</div>", unsafe_allow_html=True)
