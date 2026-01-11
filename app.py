@@ -52,28 +52,46 @@ if st.button("Confirm Move & End Turn"):
         target = unicodedata.normalize('NFC', user_input.strip())
         
         if target in lexicon:
-            # SHONDHI FIX: Grouping consonant + vowel signs
             tiles = re.findall(r'[\u0980-\u09ff][\u09be-\u09cc\u09cd\u0981\u0982\u0983]*', target)
             
+            # --- OVERLAP GUARD ---
+            can_place = True
             for i, t in enumerate(tiles):
                 curr_r = r_start + (i if orient == "Vertical" else 0)
                 curr_c = c_start + (i if orient == "Horizontal" else 0)
-                if curr_r < 9 and curr_c < 9:
+                
+                if curr_r >= 9 or curr_c >= 9:
+                    can_place = False
+                    st.error("❌ Word goes off the board!")
+                    break
+                
+                existing_tile = st.session_state.board[curr_r][curr_c]
+                if existing_tile != "" and existing_tile != t:
+                    can_place = False
+                    st.error(f"❌ Collision at {curr_r},{curr_c}! Cannot overwrite '{existing_tile}' with '{t}'.")
+                    break
+
+            if can_place:
+                # PLACE TILES
+                for i, t in enumerate(tiles):
+                    curr_r = r_start + (i if orient == "Vertical" else 0)
+                    curr_c = c_start + (i if orient == "Horizontal" else 0)
                     st.session_state.board[curr_r][curr_c] = t
-            
-            # SCORE & SWAP
-            if st.session_state.turn == "Player 1":
-                st.session_state.p1_score += len(tiles)
-                st.session_state.turn = "Player 2"
-            else:
-                st.session_state.p2_score += len(tiles)
-                st.session_state.turn = "Player 1"
-            st.rerun()
+                
+                # UPDATE SCORE & SWAP
+                points = len(tiles)
+                if st.session_state.turn == "Player 1":
+                    st.session_state.p1_score += points
+                    st.session_state.turn = "Player 2"
+                else:
+                    st.session_state.p2_score += points
+                    st.session_state.turn = "Player 1"
+                
+                # FORCE REFRESH (Prevents score looping)
+                st.success(f"Verified! Turn passed.")
+                st.rerun() 
         else:
-            # SPELLING HELP
-            suggestions = [w for w in lexicon if w.startswith(target[:2])][:3]
-            st.error(f"❌ '{target}' not in dictionary.")
-            if suggestions: st.info(f"Maybe try: {', '.join(suggestions)}")
+            st.error("❌ Invalid Spelling.")
 
 if st.button("Reset Arena"):
     st.session_state.clear()
