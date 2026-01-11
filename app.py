@@ -42,7 +42,6 @@ for r in range(9):
 
 # 5. INPUT & VALIDATION
 st.divider()
-# Added 'key' to allow the machine to wipe the box after submission
 user_input = st.text_input("Type your Bengali word:", key="word_box")
 c1, c2, c3 = st.columns(3)
 r_start = c1.number_input("Start Row", 0, 8)
@@ -54,29 +53,46 @@ if st.button("Confirm Move & End Turn"):
         target = unicodedata.normalize('NFC', user_input.strip())
         
         if target in lexicon:
-            # SHONDHI FIX: Grouping consonant + vowel signs
             tiles = re.findall(r'[\u0980-\u09ff][\u09be-\u09cc\u09cd\u0981\u0982\u0983]*', target)
             
-            # --- THE SAFETY CHECKER ---
             can_place = True
             for i, t in enumerate(tiles):
                 curr_r = r_start + (i if orient == "Vertical" else 0)
                 curr_c = c_start + (i if orient == "Horizontal" else 0)
                 
-                # 1. Off-Board Check
                 if curr_r >= 9 or curr_c >= 9:
                     can_place = False
                     st.error("❌ Word goes off the board!")
                     break
                 
-                # 2. Collision Check (Overlap Guard)
                 existing = st.session_state.board[curr_r][curr_c]
                 if existing != "" and existing != t:
                     can_place = False
-                    st.error(f"❌ Collision at {curr_r},{curr_c}! Cannot overwrite '{existing}' with '{t}'.")
+                    st.error(f"❌ Collision! Cannot overwrite '{existing}' with '{t}'.")
                     break
 
-            # --- THE FINAL COMMIT ---
+            # --- THE MISSING LOGIC TO FIX THE BREAK ---
             if can_place:
                 for i, t in enumerate(tiles):
                     curr_r = r_start + (i if orient == "Vertical" else 0)
+                    curr_c = c_start + (i if orient == "Horizontal" else 0)
+                    st.session_state.board[curr_r][curr_c] = t
+                
+                # Update Score and Swap Turn
+                points = len(tiles)
+                if st.session_state.turn == "Player 1":
+                    st.session_state.p1_score += points
+                    st.session_state.turn = "Player 2"
+                else:
+                    st.session_state.p2_score += points
+                    st.session_state.turn = "Player 1"
+                
+                # IMPORTANT: Wipe the box to prevent score-looping
+                st.session_state["word_box"] = ""
+                st.rerun()
+        else:
+            st.error("❌ Invalid spelling/Word not in dictionary.")
+
+if st.button("Reset Arena"):
+    st.session_state.clear()
+    st.rerun()
