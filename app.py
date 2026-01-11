@@ -114,4 +114,31 @@ if c2.button("🔄 Swap"):
     random.shuffle(st.session_state.bag)
     new_rack = [st.session_state.bag.pop() for _ in range(7)]
     if st.session_state.turn == "Player 1": st.session_state.p1_rack = new_rack
-    else
+    else: st.session_state.p2_rack = new_rack
+    st.session_state.turn = "Player 2" if st.session_state.turn == "Player 1" else "Player 1"
+    st.rerun()
+
+st.title("🏛️ Bengali Scrabble")
+
+# Header Numbers
+cols = st.columns([0.5] + [1]*9)
+for i in range(1, 10): cols[i].write(f"**{i}**")
+
+# Grid Layout
+for r_idx, label in enumerate(ROW_LABELS):
+    cols = st.columns([0.5] + [1]*9)
+    cols[0].write(f"**{label}**")
+    for c_idx in range(9):
+        tile_text = st.session_state.board[r_idx][c_idx]
+        pts = to_bn(GRAPHEME_VALUES.get(tile_text, "")) if tile_text else ""
+        bg = "#FFD700" if (r_idx, c_idx) == (4, 4) else "#262730"
+        cols[c_idx+1].markdown(f"<div style='height:45px; border:1px solid #444; background:{bg}; color:white; text-align:center; position:relative; font-size:20px; line-height:45px;'>{tile_text}<sub style='font-size:10px; position:absolute; bottom:2px; right:2px; color:#aaa;'>{pts}</sub></div>", unsafe_allow_html=True)
+
+st.divider()
+st.text_input("Type Bengali word:", key="word_box_input")
+u1, u2, u3 = st.columns(3)
+u1.selectbox("Row", ROW_LABELS, key="row_sel")
+u2.selectbox("Column", [str(i) for i in range(1, 10)], key="col_sel")
+u3.selectbox("Direction", ["Horizontal", "Vertical"], key="dir_val")
+st.button("Submit Move", on_click=handle_submission)
+if st.button("Reset Game"): st.session_state.clear(); st.rerun()
