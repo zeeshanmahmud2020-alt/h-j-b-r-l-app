@@ -5,14 +5,12 @@ import unicodedata
 import random
 
 # --- 1. THE ECONOMY (Points and Tile Bag) ---
-# Points assigned to each part of a Bengali "Tile"
 GRAPHEME_VALUES = {
     'ক': 1, 'ত': 1, 'ন': 1, 'প': 1, 'র': 1, 'ল': 1, 'স': 1, 'া': 1, 'ি': 1,
     'গ': 2, 'চ': 2, 'জ': 2, 'দ': 2, 'ব': 2, 'ম': 2, 'ু': 2,
     'খ': 3, 'ছ': 3, 'ট': 3, 'থ': 3, 'ফ': 3, 'ঙ': 8, 'ঞ': 10
 }
 
-# Setup the 100-tile bag and player hands
 if 'bag' not in st.session_state:
     raw_bag = (['ক', 'ন', 'প', 'র', 'ল', 'স', 'ত'] * 6 + 
                ['া', 'ি'] * 10 + 
@@ -23,7 +21,6 @@ if 'bag' not in st.session_state:
     st.session_state.p1_rack = [st.session_state.bag.pop() for _ in range(7)]
     st.session_state.p2_rack = [st.session_state.bag.pop() for _ in range(7)]
 
-# Initialize board and scores
 if 'board' not in st.session_state:
     st.session_state.board = [["" for _ in range(9)] for _ in range(9)]
 if 'p1_score' not in st.session_state:
@@ -45,7 +42,7 @@ def load_lexicon():
 
 lexicon = load_lexicon()
 
-# --- 3. THE BRAIN (Logic and Collision Rules) ---
+# --- 3. THE BRAIN (Now with Inventory Check) ---
 def handle_submission():
     word = st.session_state.word_box_input
     if not word: return
@@ -56,7 +53,17 @@ def handle_submission():
         # Break word into Grapheme clusters (Tiles)
         tiles_to_place = re.findall(r'[\u0980-\u09ff][\u09be-\u09cc\u09cd\u0981\u0982\u0983]*', target)
         
-        # 1. COLLISION CHECK: Is the spot already taken?
+        # 1. RACK CHECK: Do you actually have these letters?
+        current_rack = st.session_state.p1_rack.copy() if st.session_state.turn == "Player 1" else st.session_state.p2_rack.copy()
+        
+        for t in tiles_to_place:
+            if t in current_rack:
+                current_rack.remove(t)
+            else:
+                st.error(f"❌ You don't have the tile '{t}' in your hand!")
+                return
+
+        # 2. COLLISION CHECK: Is the spot already taken?
         for i, t in enumerate(tiles_to_place):
             curr_r = st.session_state.row_val + (i if st.session_state.dir_val == "Vertical" else 0)
             curr_c = st.session_state.col_val + (i if st.session_state.dir_val == "Horizontal" else 0)
@@ -70,23 +77,23 @@ def handle_submission():
                 st.error(f"❌ Collision! Spot ({curr_r}, {curr_c}) has '{existing_tile}'")
                 return
 
-        # 2. SCORE CALCULATION
+        # 3. SCORE CALCULATION
         word_score = sum(sum(GRAPHEME_VALUES.get(char, 0) for char in g) for g in tiles_to_place)
 
-        # 3. PLACE TILES
+        # 4. PLACE TILES
         for i, t in enumerate(tiles_to_place):
             curr_r = st.session_state.row_val + (i if st.session_state.dir_val == "Vertical" else 0)
             curr_c = st.session_state.col_val + (i if st.session_state.dir_val == "Horizontal" else 0)
             st.session_state.board[curr_r][curr_c] = t
 
-        # 4. TILE MANAGEMENT (Remove from hand, refill from bag)
+        # 5. TILE MANAGEMENT (Update real hand and refill)
         rack = st.session_state.p1_rack if st.session_state.turn == "Player 1" else st.session_state.p2_rack
         for t in tiles_to_place:
             if t in rack: rack.remove(t)
         while len(rack) < 7 and st.session_state.bag:
             rack.append(st.session_state.bag.pop())
 
-        # 5. UPDATE SCORE AND TURN
+        # 6. UPDATE SCORE AND TURN
         if st.session_state.turn == "Player 1":
             st.session_state.p1_score += word_score
             st.session_state.turn = "Player 2"
@@ -110,7 +117,6 @@ current_rack = st.session_state.p1_rack if st.session_state.turn == "Player 1" e
 st.sidebar.warning("  ".join(current_rack))
 
 st.title("🏛️ Bengali Scrabble Arena")
-# Draw the 9x9 grid
 for r in range(9):
     cols = st.columns(9)
     for c in range(9):
