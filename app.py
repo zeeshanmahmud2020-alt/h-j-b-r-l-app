@@ -65,4 +65,59 @@ for r in range(9):
     for c in range(9):
         tile = st.session_state.board[r][c]
         color = "#FFD700" if (r, c) == (4, 4) else "#262730"
-        cols[c].markdown(f"<div style='height
+        cols[c].markdown(f"<div style='height:45px; border:1px solid #555; background:{color}; text-align:center; line-height:45px; font-size:20px; font-weight:bold; color:white;'>{tile}</div>", unsafe_allow_html=True)
+
+# --- 5. THE BRAIN (Logic for placing words) ---
+def handle_submission():
+    word = st.session_state.word_box_input
+    if not word: return
+    
+    target = unicodedata.normalize('NFC', word.strip())
+    
+    if target in lexicon:
+        # Break word into tiles (Graphemes)
+        tiles_to_place = re.findall(r'[\u0980-\u09ff][\u09be-\u09cc\u09cd\u0981\u0982\u0983]*', target)
+        
+        # Calculate Score based on our Price Map
+        word_score = sum(sum(GRAPHEME_VALUES.get(char, 0) for char in g) for g in tiles_to_place)
+
+        # Place on board
+        for i, t in enumerate(tiles_to_place):
+            curr_r = st.session_state.row_val + (i if st.session_state.dir_val == "Vertical" else 0)
+            curr_c = st.session_state.col_val + (i if st.session_state.dir_val == "Horizontal" else 0)
+            if curr_r < 9 and curr_c < 9:
+                st.session_state.board[curr_r][curr_c] = t
+
+        # Subtract used tiles from hand and refill from bag
+        rack = st.session_state.p1_rack if st.session_state.turn == "Player 1" else st.session_state.p2_rack
+        for t in tiles_to_place:
+            if t in rack: rack.remove(t)
+        while len(rack) < 7 and st.session_state.bag:
+            rack.append(st.session_state.bag.pop())
+
+        # Update Scores and Turn
+        if st.session_state.turn == "Player 1":
+            st.session_state.p1_score += word_score
+            st.session_state.turn = "Player 2"
+        else:
+            st.session_state.p2_score += word_score
+            st.session_state.turn = "Player 1"
+        
+        st.session_state.word_box_input = ""
+    else:
+        st.error("❌ Word not in dictionary!")
+
+# --- 6. USER INPUTS ---
+st.divider()
+user_input = st.text_input("Type your Bengali word:", key="word_box_input")
+c1, c2, c3 = st.columns(3)
+r_start = c1.number_input("Start Row", 0, 8, key="row_val")
+c_start = c2.number_input("Start Col", 0, 8, key="col_val")
+orient = c3.selectbox("Direction", ["Horizontal", "Vertical"], key="dir_val")
+
+if st.button("Confirm Move & End Turn", on_click=handle_submission):
+    pass
+
+if st.button("Reset Arena"):
+    st.session_state.clear()
+    st.rerun()
