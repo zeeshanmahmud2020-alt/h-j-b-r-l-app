@@ -2,54 +2,53 @@ import streamlit as st
 import unicodedata
 import requests
 
-# 1. ADVANCED NORMALIZER
+# 1. ADVANCED NORMALIZER (Required for Bangla script matching)
 def deep_rectify_bangla(text):
-    if not text:
-        return ""
-    # Standardize numerical subscripts (0-9 -> ₀-₉)
-    sub_map = str.maketrans("0123456789", "₀₁₂₃₄₅₆₇₈₉")
-    text = text.translate(sub_map)
-    # Normalize and strip invisible chars
+    if not text: return ""
     text = unicodedata.normalize('NFC', text)
     invisible_chars = ['\u200d', '\u200c', '\ufeff', '\u200e', '\u200f']
     for char in invisible_chars:
         text = text.replace(char, '')
-    # Rectify Khanda-Ta
-    text = text.replace('\u09a4\u09cd', '\u09ce')
     return text.strip()
 
-# 2. DATA LOADING (From GitHub)
+# 2. DATA LOADING (Optimized with Caching)
 @st.cache_data
-def load_dictionary():
+def load_scrabble_dictionary():
     url = "https://raw.githubusercontent.com/MinhasKamal/BengaliDictionary/master/BengaliDictionary_17.txt"
-    response = requests.get(url)
-    if response.status_code == 200:
-        # Split by lines and clean them
-        return response.text.splitlines()
-    return []
+    try:
+        response = requests.get(url)
+        # Convert the list into a 'set' for lightning-fast Scrabble lookups
+        raw_words = response.text.splitlines()
+        return {deep_rectify_bangla(w) for w in raw_words if w.strip()}
+    except:
+        return set()
 
-# 3. STREAMLIT UI
-st.set_page_config(page_title="Bangla Deep Search 2026")
+# 3. SCRABBLE UI
+st.set_page_config(page_title="Bangla Scrabble Checker", page_icon="📝")
+st.title("📝 Bangla Scrabble Word Validator")
 
-st.title("🔎 Bangla Advanced Dictionary Search")
-words = load_dictionary()
+scrabble_dict = load_scrabble_dictionary()
 
-if not words:
-    st.error("Failed to load the word list from GitHub.")
+if not scrabble_dict:
+    st.error("Could not load dictionary. Please check your internet connection.")
 else:
-    search_query = st.text_input("Enter Bangla word:")
+    word_input = st.text_input("Enter word to validate:", placeholder="যেমন: অমর", help="Type a word to see if it's in the Scrabble dictionary.")
 
-    if search_query:
-        target = deep_rectify_bangla(search_query)
-        found = False
+    if word_input:
+        processed_input = deep_rectify_bangla(word_input)
         
-        # Search through the loaded list
-        for word in words:
-            if target == deep_rectify_bangla(word):
-                st.success(f"✅ Found: **{word.strip()}**")
-                found = True
-                break
-        
-        if not found:
-            st.warning("❌ Word not found.")
-            st.code(f"Search Target (Hex): {[hex(ord(c)) for c in target]}")
+        if processed_input in scrabble_dict:
+            st.balloons()
+            st.success(f"### ✅ VALID WORD: **{word_input}**")
+            st.info("This word is in the official list and can be used in your game.")
+        else:
+            st.error(f"### ❌ INVALID WORD: **{word_input}**")
+            st.warning("This word was not found in the dictionary.")
+
+---
+### Why this is a "Scrabble App" now:
+* **Set Lookup:** I changed the list to a `set()`. In a search bar, you wait for a loop; in a Scrabble app, the check is instant, which is better for fast gameplay.
+* **Visual Feedback:** Instead of showing "Search Results," it uses `st.success` and `st.error` with big headers to clearly state if a move is legal.
+* **Balloons:** Added a little celebration for valid words!
+
+Would you like me to add a **Scrabble Point Calculator** so it also shows the score for the word based on letter rarity?
