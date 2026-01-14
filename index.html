@@ -4,18 +4,15 @@
     <meta charset="UTF-8">
     <title>H J B R L</title>
     <script defer src="https://pyscript.net/latest/pyscript.js"></script>
-    <py-config>
-        packages = ["requests", "flet"]
-    </py-config>
+    <py-config>packages = ["requests", "flet"]</py-config>
 </head>
-<body style="background-color: #121212;">
+<body style="background-color: #121212; color: white;">
     <py-script>
 import flet as ft
 import random
 import requests
 import unicodedata
 
-# 1. Real Bengali Dictionary
 DICT_URL = "https://raw.githubusercontent.com/MinhasKamal/BengaliDictionary/master/BengaliWordList_40.txt"
 
 def get_random_glyph():
@@ -25,73 +22,44 @@ def get_random_glyph():
 
 async def main(page: ft.Page):
     page.title = "H J B R L"
-    page.horizontal_alignment = ft.CrossAxisAlignment.CENTER
-    page.vertical_alignment = ft.MainAxisAlignment.CENTER
     page.theme_mode = ft.ThemeMode.DARK
     page.bgcolor = "#121212"
-
     valid_words = set()
     score_val = [0]
     
-    # UI Elements
-    score_display = ft.Text("Score: 0", size=24, weight="bold", color="cyan")
-    current_word_label = ft.Text("", size=45, weight="bold", color="amber")
-    feedback = ft.Text("Loading Dictionary...", size=16, italic=True)
-    tile_row = ft.Row(alignment=ft.MainAxisAlignment.CENTER, spacing=10)
+    score_display = ft.Text("Score: 0", size=24, color="cyan")
+    current_word_label = ft.Text("", size=45, color="amber")
+    feedback = ft.Text("Loading...", size=16)
+    tile_row = ft.Row(alignment=ft.MainAxisAlignment.CENTER)
 
     def load_dictionary():
         try:
             res = requests.get(DICT_URL)
-            words = {unicodedata.normalize('NFC', w.strip()) for w in res.text.splitlines()}
-            valid_words.update(words)
-            feedback.value = "✅ Dictionary Ready!"
-            feedback.color = "green"
+            valid_words.update({unicodedata.normalize('NFC', w.strip()) for w in res.text.splitlines()})
+            feedback.value = "✅ Ready!"
         except:
-            feedback.value = "⚠️ Dictionary Error"
+            feedback.value = "⚠️ Error"
         page.update()
 
     def render_tiles():
         tile_row.controls.clear()
         for _ in range(7):
             char = get_random_glyph()
-            pts = random.randint(1, 5)
-            tile_row.controls.append(
-                ft.Container(
-                    content=ft.Stack([
-                        ft.Text(char, size=24, weight="bold", color="black", top=8, left=10),
-                        ft.Text(str(pts), size=10, color="black", bottom=2, right=5)
-                    ]),
-                    bgcolor="amber", width=55, height=60, border_radius=8,
-                    on_click=lambda e, c=char: [setattr(current_word_label, 'value', current_word_label.value + c), page.update()]
-                )
-            )
-        page.update()
-
-    def submit_word(e):
-        user_input = unicodedata.normalize('NFC', current_word_label.value.strip())
-        if user_input in valid_words:
-            pts = len(user_input) * 10
-            score_val[0] += pts
-            score_display.value = f"Score: {score_val[0]}"
-            feedback.value = f"✅ সঠিক! (+{pts})"
-            feedback.color = "green"
-            current_word_label.value = ""
-        else:
-            feedback.value = "❌ নেই"
-            feedback.color = "red"
+            tile_row.controls.append(ft.Container(
+                content=ft.Text(char, size=24, color="black"),
+                bgcolor="amber", width=55, height=60, border_radius=8,
+                on_click=lambda e, c=char: [setattr(current_word_label, 'value', current_word_label.value + c), page.update()]
+            ))
         page.update()
 
     page.add(
-        ft.Text("H J B R L", size=36, weight="bold", letter_spacing=8),
-        score_display,
-        ft.Container(content=current_word_label, height=100, width=350, alignment=ft.Alignment(0,0), border=ft.border.all(2, "white24"), border_radius=15),
-        feedback,
-        tile_row,
+        ft.Text("H J B R L", size=36),
+        score_display, current_word_label, feedback, tile_row,
         ft.Row([
-            ft.ElevatedButton("CLEAR", on_click=lambda _: [setattr(current_word_label, 'value', ''), page.update()], bgcolor="red", color="white"),
-            ft.ElevatedButton("SUBMIT", on_click=submit_word, bgcolor="green", color="white"),
+            ft.ElevatedButton("CLEAR", on_click=lambda _: [setattr(current_word_label, 'value', ''), page.update()]),
+            ft.ElevatedButton("SUBMIT", on_click=lambda _: None),
             ft.IconButton(icon=ft.icons.REFRESH, on_click=lambda _: render_tiles())
-        ], alignment=ft.MainAxisAlignment.CENTER)
+        ], alignment="center")
     )
     load_dictionary()
     render_tiles()
