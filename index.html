@@ -1,12 +1,14 @@
 <!DOCTYPE html>
 <html>
 <head>
+    <meta charset="UTF-8">
+    <title>H J B R L</title>
     <script defer src="https://pyscript.net/latest/pyscript.js"></script>
     <py-config>
         packages = ["requests", "flet"]
     </py-config>
 </head>
-<body style="background-color: #121212;">
+<body style="background-color: #121212; color: white;">
     <py-script>
 import flet as ft
 import random
@@ -15,7 +17,7 @@ import unicodedata
 
 async def main(page: ft.Page):
     page.bgcolor = "#121212"
-    page.add(ft.Text("Initializing Game...", size=30, color="white"))
+    page.add(ft.Text("SUCCESS: Python Engine Loaded!", size=30, color="green"))
     page.update()
 
 ft.app(target=main)
