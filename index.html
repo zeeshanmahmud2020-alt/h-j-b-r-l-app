@@ -2,24 +2,21 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>H J B R L</title>
-    <link rel="stylesheet" href="https://pyscript.net/latest/pyscript.css" />
     <script defer src="https://pyscript.net/latest/pyscript.js"></script>
-</head>
-<body style="background-color: #121212; color: white;">
     <py-config>
         packages = ["requests", "flet"]
     </py-config>
+</head>
+<body style="background-color: #121212;">
     <py-script>
 import flet as ft
 import random
 import requests
 import unicodedata
 
-# [Your game logic starts here]
 async def main(page: ft.Page):
     page.bgcolor = "#121212"
-    page.add(ft.Text("Initializing Game...", size=30))
+    page.add(ft.Text("Initializing Game...", size=30, color="white"))
     page.update()
 
 ft.app(target=main)
