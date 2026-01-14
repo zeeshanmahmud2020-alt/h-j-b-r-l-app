@@ -1,21 +1,21 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>H J B R L</title>
     <meta charset="UTF-8">
-    <link rel="stylesheet" href="https://pyscript.net/latest/pyscript.css" />
+    <title>H J B R L</title>
     <script defer src="https://pyscript.net/latest/pyscript.js"></script>
     <py-config>
         packages = ["requests", "flet"]
     </py-config>
 </head>
-<body style="background-color: #121212; margin: 0; padding: 0;">
+<body style="background-color: #121212;">
     <py-script>
 import flet as ft
 import random
 import requests
 import unicodedata
 
+# 1. Real Bengali Dictionary
 DICT_URL = "https://raw.githubusercontent.com/MinhasKamal/BengaliDictionary/master/BengaliWordList_40.txt"
 
 def get_random_glyph():
@@ -33,6 +33,7 @@ async def main(page: ft.Page):
     valid_words = set()
     score_val = [0]
     
+    # UI Elements
     score_display = ft.Text("Score: 0", size=24, weight="bold", color="cyan")
     current_word_label = ft.Text("", size=45, weight="bold", color="amber")
     feedback = ft.Text("Loading Dictionary...", size=16, italic=True)
@@ -83,4 +84,19 @@ async def main(page: ft.Page):
     page.add(
         ft.Text("H J B R L", size=36, weight="bold", letter_spacing=8),
         score_display,
-        ft.Container(content=current_word_label, height
+        ft.Container(content=current_word_label, height=100, width=350, alignment=ft.Alignment(0,0), border=ft.border.all(2, "white24"), border_radius=15),
+        feedback,
+        tile_row,
+        ft.Row([
+            ft.ElevatedButton("CLEAR", on_click=lambda _: [setattr(current_word_label, 'value', ''), page.update()], bgcolor="red", color="white"),
+            ft.ElevatedButton("SUBMIT", on_click=submit_word, bgcolor="green", color="white"),
+            ft.IconButton(icon=ft.icons.REFRESH, on_click=lambda _: render_tiles())
+        ], alignment=ft.MainAxisAlignment.CENTER)
+    )
+    load_dictionary()
+    render_tiles()
+
+ft.app(target=main)
+    </py-script>
+</body>
+</html>
