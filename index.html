@@ -3,66 +3,24 @@
 <head>
     <meta charset="UTF-8">
     <title>H J B R L</title>
+    <link rel="stylesheet" href="https://pyscript.net/latest/pyscript.css" />
     <script defer src="https://pyscript.net/latest/pyscript.js"></script>
+</head>
+<body style="background-color: #121212; color: white;">
     <py-config>
         packages = ["requests", "flet"]
     </py-config>
-</head>
-<body style="background-color: #121212;">
     <py-script>
 import flet as ft
 import random
 import requests
 import unicodedata
 
-DICT_URL = "https://raw.githubusercontent.com/MinhasKamal/BengaliDictionary/master/BengaliWordList_40.txt"
-
-def get_random_glyph():
-    consonants = ["ক", "খ", "গ", "ঘ", "চ", "জ", "ত", "দ", "ন", "প", "ব", "ম", "ল", "স"]
-    vowels = ["া", "ি", "ু", "ে", "ো", ""] 
-    return random.choice(consonants) + random.choice(vowels)
-
+# [Your game logic starts here]
 async def main(page: ft.Page):
-    page.title = "H J B R L"
-    page.theme_mode = ft.ThemeMode.DARK
     page.bgcolor = "#121212"
-    valid_words = set()
-    score_display = ft.Text("Score: 0", size=24, color="cyan")
-    current_word_label = ft.Text("", size=45, color="amber")
-    feedback = ft.Text("Loading...", size=16)
-    tile_row = ft.Row(alignment=ft.MainAxisAlignment.CENTER)
-
-    def load_dictionary():
-        try:
-            res = requests.get(DICT_URL)
-            valid_words.update({unicodedata.normalize('NFC', w.strip()) for w in res.text.splitlines()})
-            feedback.value = "✅ Ready!"
-        except:
-            feedback.value = "⚠️ Error"
-        page.update()
-
-    def render_tiles():
-        tile_row.controls.clear()
-        for _ in range(7):
-            char = get_random_glyph()
-            tile_row.controls.append(ft.Container(
-                content=ft.Text(char, size=24, color="black"),
-                bgcolor="amber", width=55, height=60, border_radius=8,
-                on_click=lambda e, c=char: [setattr(current_word_label, 'value', current_word_label.value + c), page.update()]
-            ))
-        page.update()
-
-    page.add(
-        ft.Text("H J B R L", size=36),
-        score_display, current_word_label, feedback, tile_row,
-        ft.Row([
-            ft.ElevatedButton("CLEAR", on_click=lambda _: [setattr(current_word_label, 'value', ''), page.update()]),
-            ft.ElevatedButton("SUBMIT", on_click=lambda _: None),
-            ft.IconButton(icon=ft.icons.REFRESH, on_click=lambda _: render_tiles())
-        ], alignment="center")
-    )
-    load_dictionary()
-    render_tiles()
+    page.add(ft.Text("Initializing Game...", size=30))
+    page.update()
 
 ft.app(target=main)
     </py-script>
