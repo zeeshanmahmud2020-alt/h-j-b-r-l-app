@@ -2,11 +2,10 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>H J B R L</title>
     <script defer src="https://pyscript.net/latest/pyscript.js"></script>
     <py-config>packages = ["requests", "flet"]</py-config>
 </head>
-<body style="background-color: #121212; color: white;">
+<body style="background-color: #121212;">
     <py-script>
 import flet as ft
 import random
@@ -25,8 +24,6 @@ async def main(page: ft.Page):
     page.theme_mode = ft.ThemeMode.DARK
     page.bgcolor = "#121212"
     valid_words = set()
-    score_val = [0]
-    
     score_display = ft.Text("Score: 0", size=24, color="cyan")
     current_word_label = ft.Text("", size=45, color="amber")
     feedback = ft.Text("Loading...", size=16)
